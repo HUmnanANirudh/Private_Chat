@@ -57,9 +57,10 @@ const regenerate = ()=>{
 }
   return (
   <main className="min-h-screen w-full flex items-center justify-center bg-zinc-950 px-4 pt-12">
-  <div className="w-full max-w-md -translate-y-16">
-     <div className="flex justify-center items-center mb-8">
+  <div className="w-full max-w-md -translate-y-24 md:-translate-y-16">
+     <div className="flex flex-col justify-center items-center mb-4">
     <h1 className="text-3xl font-semibold text-zinc-100 my-4">{">_"} Private_Chat</h1>
+    <p className="text-sm text-zinc-400 text-center">A private self destructing chat application</p>
     </div>
     <div className="rounded-md border border-zinc-800 bg-zinc-900 p-6 shadow-2xl shadow-amber-50">
       <h1 className="text-2xl font-semibold text-zinc-100 mb-1">
