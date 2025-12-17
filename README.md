@@ -1,2 +1,2 @@
-### Private_Chat
+## Private_Chat
 A private self destructing chat application
