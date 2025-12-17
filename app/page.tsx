@@ -1,6 +1,9 @@
 "use client"
 import { useEffect, useState } from "react";
 import { RefreshCcw } from 'lucide-react';
+import { useMutation } from "@tanstack/react-query";
+import { client } from "./lib/client";
+import { useRouter } from "next/navigation";
 const Names  = [
   "Aether",
   "Nyx",
@@ -38,6 +41,7 @@ const usernameGenrator =  () =>{
 }
 
 export default function Home() {
+  const router = useRouter();
   const [userName,setuserName]  =  useState('');
   useEffect(() => {
     const stored = localStorage.getItem("username");
@@ -55,6 +59,15 @@ const regenerate = ()=>{
   localStorage.setItem("username",username);
   setuserName(username);
 }
+const {mutate:createRoom}= useMutation({
+  mutationFn:async () => {
+    const res = await client.room.create.post();
+    return res
+  },
+  onSuccess: (res) => {
+    router.push(`/room/${res.data?.roomId}`);
+  }
+})
   return (
   <main className="min-h-screen w-full flex items-center justify-center bg-zinc-950 px-4 pt-12">
   <div className="w-full max-w-md -translate-y-24 md:-translate-y-16">
@@ -75,7 +88,7 @@ const regenerate = ()=>{
         </button>
       </div>
       <div className="flex justify-center items-center w-full">
-        <button className="p-4 bg-zinc-100 text-background font-bold hover:bg-zinc-200 hover:cursor-pointer hover:scale-105 transition-all ease-in-out duration-300 active:scale-75 text-sm">
+        <button onClick={()=>createRoom()} className="p-4 bg-zinc-100 text-background font-bold hover:bg-zinc-200 hover:cursor-pointer hover:scale-105 transition-all ease-in-out duration-300 active:scale-75 text-sm">
           CREATE NEW CHAT ROOM
         </button>
       </div>
