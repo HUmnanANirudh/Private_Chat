@@ -13,6 +13,7 @@ export default function HomeClient() {
       return res;
     },
     onSuccess: (res) => {
+      localStorage.setItem("Created","true");
       router.push(`/room/${res.data?.roomId}`);
     },
   });

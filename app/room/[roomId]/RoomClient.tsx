@@ -18,7 +18,7 @@ export default function RoomClient() {
           JoiningMode={"join"}
         />
       )}
-      {mode === "chat" && <Chat roomId={roomId}/>}
+      {mode === "chat" && <Chat roomId={roomId} />}
     </>
   );
 }
