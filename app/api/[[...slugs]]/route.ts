@@ -1,25 +1,26 @@
-import { Elysia, t } from "elysia";
+import { Elysia } from "elysia";
 import { redis } from "@/app/lib/redis";
-const ROOM_TTL_SECONDS = 60*10
-const room = new Elysia({prefix: "/room"}).post("/create",async () =>{
-    // const {ROOM_TTL_SECONDS} = body;
+import { CreateRoomSchema } from "../schemas";
+
+const room = new Elysia({prefix: "/room"}).post("/create",async ({body}) =>{
+    const {ROOM_TTL_SECONDS} = body;
     const roomId = crypto.randomUUID().slice(0,8);
+    const expireAt = Date.now() + ROOM_TTL_SECONDS * 1000;
     await redis.hset(`meta:${roomId}`,{
         connected:[],
-        createdAt:Date.now()
+        createdAt:Date.now(),
+        expireAt
     });
     await redis.expire(`meta:${roomId}`, ROOM_TTL_SECONDS) 
     return {
         roomId,
-        expiresIn: ROOM_TTL_SECONDS
+        expireAt
       };
-    // },
-    // {
-    //   body: t.Object({
-    //     ROOM_TTL_SECONDS: t.Number()
-    //   })
-    // }
-});
+    },
+    {
+      body: CreateRoomSchema
+    }
+);
 export const api = new Elysia({ prefix: "/api" }).use(room);
 export const GET = api.fetch;
 export const POST = api.fetch;

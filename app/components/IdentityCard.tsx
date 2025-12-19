@@ -1,7 +1,8 @@
 "use client";
-import { useState, useEffect} from "react";
+import { useState, useEffect } from "react";
 import { RefreshCcw } from "lucide-react";
 import RoomActions from "./RoomActions";
+
 const Names = [
   "Aether",
   "Nyx",
@@ -31,26 +32,34 @@ const Names = [
   "Zorro",
   "Titan",
 ];
-const usernameGenrator = () => {
+
+const usernameGenerator = () => {
   const name = Names[Math.floor(Math.random() * Names.length)];
   const id = crypto.randomUUID().slice(0, 6);
   return `${name}_${id}`;
 };
-export default function IdentityCard() {
+
+import type { IdentityCardProps } from "../interface";
+
+export default function IdentityCard({
+  onCreateRoom,
+  onJoinRoom,
+  roomId, JoiningMode
+}: IdentityCardProps) {
   const [userName, setuserName] = useState("");
   useEffect(() => {
     const stored = localStorage.getItem("username");
     if (stored) {
       setuserName(stored);
     } else {
-      const newUserName = usernameGenrator();
+      const newUserName = usernameGenerator();
       localStorage.setItem("username", newUserName);
       setuserName(newUserName);
     }
   }, []);
   const regenerate = () => {
     localStorage.removeItem("username");
-    const username = usernameGenrator();
+    const username = usernameGenerator();
     localStorage.setItem("username", username);
     setuserName(username);
   };
@@ -68,7 +77,7 @@ export default function IdentityCard() {
           <RefreshCcw />
         </button>
       </div>
-      <RoomActions/>
+      <RoomActions oncreateRoom={onCreateRoom} onjoinRoom={onJoinRoom} JoinMode={JoiningMode} room={roomId} />
     </div>
   );
 }

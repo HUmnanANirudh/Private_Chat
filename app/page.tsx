@@ -1,34 +1,38 @@
 "use client";
-import IdentityCard from "./components/IdentityCard";
 import { useMutation } from "@tanstack/react-query";
-import { client } from "./lib/client";
-import RoomActions from "./components/RoomActions";
 import { useRouter } from "next/navigation";
+import Lobby from "./components/Lobby";
+import { client } from "./lib/client";
+import type { JoiningMode } from "./interface";
 
 export default function Home() {
   const router = useRouter();
   const { mutate: createRoom } = useMutation({
-    mutationFn: async () => {
-      const res = await client.room.create.post();
+    mutationFn: async (ROOM_TTL_SECONDS: number) => {
+      const res = await client.room.create.post({ ROOM_TTL_SECONDS });
       return res;
     },
     onSuccess: (res) => {
       router.push(`/room/${res.data?.roomId}`);
     },
   });
+
+  const handleCreateRoom = (ttl: number) => {
+    if (ttl <= 0 || ttl > 1440) return;
+    const seconds = ttl * 60;
+    createRoom(seconds);
+  }
+  const handleJoinRoom = (roomId: string) => {
+    router.push(`/room/${roomId}`);
+  }
+  
+  const joiningMode: JoiningMode = "idle";
+  
   return (
-    <main className="min-h-screen w-full flex flex-col items-center justify-center">
-      <div className="flex flex-col justify-center items-center mb-4">
-        <h1 className="text-3xl font-semibold text-zinc-100 my-4">
-          {">_"} Private_Chat
-        </h1>
-        <p className="text-sm text-zinc-400 text-center">
-          A private self destructing chat application
-        </p>
-      </div>
-      <div className="w-full max-w-lg px-4">
-        <IdentityCard/>
-      </div>
-    </main>
+    <Lobby
+      onCreateRoom={handleCreateRoom}
+      onJoinRoom={handleJoinRoom}
+      JoiningMode={joiningMode}
+    />
   );
 }
