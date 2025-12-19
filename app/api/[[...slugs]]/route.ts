@@ -7,7 +7,7 @@ const room = new Elysia({prefix: "/room"}).post("/create",async () =>{
     await redis.hset(`meta:${roomId}`,{
         connected:[],
         createdAt:Date.now()
-    }),
+    });
     await redis.expire(`meta:${roomId}`, ROOM_TTL_SECONDS) 
     return {
         roomId,
