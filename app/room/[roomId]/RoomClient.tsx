@@ -1,24 +1,21 @@
 "use client";
 import Chat from "@/app/components/ChatRoom";
 import Lobby from "@/app/components/Lobby";
-import { useParams } from "next/navigation";
 import { useState } from "react";
 
-type mode = "lobby" | "chat";
-export default function RoomClient() {
-  const [mode, setMode] = useState<mode>("lobby");
-  const params = useParams();
-  const roomId = String(params.roomId);
+type Mode = "lobby" | "chat";
+export default function RoomClient({ Mode,RoomId }: { Mode: Mode, RoomId: string }) {
+  const [mode, setMode] = useState<Mode>(Mode);
   return (
     <>
       {mode === "lobby" && (
         <Lobby
-          roomId={roomId}
+          roomId={RoomId}
           onJoinRoom={() => setMode("chat")}
           JoiningMode={"join"}
         />
       )}
-      {mode === "chat" && <Chat roomId={roomId} />}
+      {mode === "chat" && <Chat roomId={RoomId} />}
     </>
   );
 }
