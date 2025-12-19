@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import { Paperclip, Send } from "lucide-react";
 import type { ChatRoomProps } from "../interface";
 
 export default function Chat({roomId}: ChatRoomProps) {
@@ -16,7 +17,7 @@ export default function Chat({roomId}: ChatRoomProps) {
     return `${mins}:${secs.toString().padStart(2, "0")}`;
   };
   return (
-    <div>
+    <div className="md:max-w-lg mx-auto">
       <header className="flex items-center justify-between gap-3 p-3 w-full">
         <div className="flex flex-col gap-1 min-w-0">
           <span className="text-xs text-gray-400 whitespace-nowrap">
@@ -53,6 +54,33 @@ export default function Chat({roomId}: ChatRoomProps) {
           Destroy Now
         </button>
       </header>
+      <main className="flex flex-col h-[calc(100vh-80px)]">
+        <div className="flex-1 overflow-y-auto p-4 space-y-4"/>
+        <div className="border-t border-zinc-800 p-4">
+          <div className="flex items-end gap-2">
+            <button
+              className="p-2 bg-zinc-800 hover:bg-zinc-700 rounded-lg transition"
+              title="Attach file"
+            >
+              <Paperclip size={20} />
+            </button>
+            <textarea
+              placeholder="Type your message..."
+              className="flex-1 bg-zinc-900 border border-zinc-800 rounded-lg px-4 py-2 text-sm resize-none focus:outline-none focus:border-zinc-700 max-h-32"
+              rows={1}
+              onInput={(e) => {
+                e.currentTarget.style.height = 'auto';
+                e.currentTarget.style.height = Math.min(e.currentTarget.scrollHeight, 128) + 'px';
+              }}
+            />
+            <button
+              className="px-4 py-2 bg-zinc-100 text-zinc-900 hover:bg-zinc-200 rounded-lg font-medium transition active:scale-95 flex items-center gap-2"
+            >
+              Send
+            </button>
+          </div>
+        </div>
+      </main>
     </div>
   );
 }

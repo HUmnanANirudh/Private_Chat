@@ -13,7 +13,7 @@ export const proxy = async(req: NextRequest) => {
     const roomId = roomIdMatch[1];
     const meta = await redis.hgetall<{connected: string[],createdAt: number,expiresAt: number}>(`meta:${roomId}`);
     if(!meta){
-        return NextResponse.redirect(new URL("/room/not-found", req.url));
+        return NextResponse.redirect(new URL("/errors/not-found", req.url));
     }
     const existingTokens =req.cookies.get("x-auth-token")?.value;
 
@@ -22,7 +22,7 @@ export const proxy = async(req: NextRequest) => {
     }
 
     if(meta.connected.length >=2){
-        return NextResponse.redirect(new URL("/room/room-full", req.url));
+        return NextResponse.redirect(new URL("/errors/room-full", req.url));
     }
     
     const respone = NextResponse.next();
