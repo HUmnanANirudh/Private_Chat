@@ -1,15 +1,16 @@
 "use client";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Paperclip } from "lucide-react";
-import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 import type { ChatRoomProps } from "../interface";
 import { client } from "../lib/client";
 import { useRealtime } from "../lib/realtime-client";
-
 export default function Chat({ roomId }: ChatRoomProps) {
   const [copied, setCopied] = useState(false);
   const [input, setInput] = useState("");
-  const timeLeft = 600;
+  const [TimeRemaining, setTimeRemaining] = useState<number | null>(null);
+  const router = useRouter();
   const handleCopy = async () => {
     await navigator.clipboard.writeText(window.location.href);
     setCopied(true);
@@ -21,15 +22,15 @@ export default function Chat({ roomId }: ChatRoomProps) {
     return `${mins}:${secs.toString().padStart(2, "0")}`;
   };
 
-  const { data: messages,refetch } =  useQuery({
+  const { data: messages, refetch } = useQuery({
     queryKey: ["messages", roomId],
     queryFn: async () => {
       const res = await client.messages.messages.get({
         query: { roomId: roomId as string },
       });
       return res.data?.messages;
-    }
-  })
+    },
+  });
   const { mutate: sendMessage, isPending } = useMutation({
     mutationFn: async ({ newMessage }: { newMessage: string }) => {
       const userName = localStorage.getItem("userName") as string;
@@ -39,16 +40,51 @@ export default function Chat({ roomId }: ChatRoomProps) {
       );
     },
   });
+  const { data: ttlData } = useQuery({
+    queryKey: ["ttl", roomId],
+    queryFn: async () => {
+      const res = await client.room.ttl.get({
+        query: { roomId: roomId as string },
+      });
+      return res.data;
+    },
+  });
 
+  useEffect(() => {
+    if (ttlData?.ttl !== undefined) {
+      setTimeRemaining(ttlData.ttl);
+    }
+  });
+  useEffect(() => {
+    if (TimeRemaining === null || TimeRemaining < 0) return;
+    if (TimeRemaining === 0) {
+      router.push("/error/room-destroyed");
+      return;
+    }
+    const interval = setInterval(() => {
+      setTimeRemaining((prev) => (prev !== null ? prev - 1 : null));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [TimeRemaining, router]);
+
+  const {mutate:destroyRoom} = useMutation({
+    mutationFn: async () => {
+      await client.room.delete(null, { query: { roomId: roomId as string } });
+    },
+  });
   useRealtime({
-    channels:[roomId],
-    events: ["chat.message","chat.destroy"],
-    onData:({event})=>{
-      if(event==="chat.message"){
+    channels: [roomId],
+    events: ["chat.message", "chat.destroy"],
+    onData: ({ event }) => {
+      if (event === "chat.message") {
         refetch();
       }
-    }
-  })
+      if (event === "chat.destroy") {
+        router.push("/error/room-destroyed");
+      }
+    },
+  });
+
   return (
     <div className="md:max-w-lg mx-auto">
       <header className="flex items-center justify-between gap-3 p-3 w-full">
@@ -75,10 +111,11 @@ export default function Chat({ roomId }: ChatRoomProps) {
         <div className="flex flex-col items-center text-xs text-gray-400 whitespace-nowrap gap-1">
           <span>Self destruct</span>
           <span className="font-mono text-red-400 text-sm sm:text-base">
-            {formatTime(timeLeft)}
+            {formatTime(TimeRemaining ?? 0)}
           </span>
         </div>
         <button
+        onClick={() => destroyRoom()}
           className="px-3 py-1.5 text-xs sm:text-sm
                bg-red-600 hover:bg-red-700 hover:scale-105 active:scale-95
                rounded font-medium whitespace-nowrap
