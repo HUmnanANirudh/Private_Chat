@@ -4,7 +4,6 @@ import { Paperclip } from "lucide-react";
 import { useState } from "react";
 import type { ChatRoomProps } from "../interface";
 import { client } from "../lib/client";
-import { set } from "zod";
 
 export default function Chat({ roomId }: ChatRoomProps) {
   const [copied, setCopied] = useState(false);
