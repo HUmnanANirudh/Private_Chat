@@ -1,10 +1,8 @@
-import { Elysia, t } from "elysia";
+import { realtime } from "@/app/lib/realtime";
 import { redis } from "@/app/lib/redis";
+import { Elysia, t } from "elysia";
 import { CreateRoomSchema } from "../schemas";
 import { authMiddleware } from "./auth";
-import { id, th } from "zod/locales";
-import { realtime } from "@/app/lib/realtime";
-import { AwardIcon } from "lucide-react";
 
 const room = new Elysia({ prefix: "/room" }).post(
   "/create",
@@ -28,44 +26,59 @@ const room = new Elysia({ prefix: "/room" }).post(
   }
 );
 
-const messages = new Elysia({ prefix: "/messages" }).use(authMiddleware).post(
-  "/messages",
-  async ({ body, auth }) => {
-    const { sender, content } = body;
-    const roomExist = await redis.exists(`meta:${auth.roomId}`);
-    if(!roomExist) {
-      throw new Error("Room does not exist"); 
+const messages = new Elysia({ prefix: "/messages" })
+  .use(authMiddleware)
+  .post(
+    "/messages",
+    async ({ body, auth }) => {
+      const { sender, content } = body;
+      const roomExist = await redis.exists(`meta:${auth.roomId}`);
+      if (!roomExist) {
+        throw new Error("Room does not exist");
+      }
+      const message = {
+        id: crypto.randomUUID().slice(0, 6),
+        sender,
+        content,
+        timestamp: Date.now(),
+        roomId: auth.roomId,
+      };
+
+      await redis.rpush(`messages:${auth.roomId}`, {
+        ...message,
+        token: auth.token,
+      });
+
+      await realtime.channel(auth.roomId).emit("chat.message", message);
+
+      const ttl = await redis.ttl(`meta:${auth.roomId}`);
+      await redis.expire(`messages:${auth.roomId}`, ttl);
+      await redis.expire(`history:${auth.roomId}`, ttl);
+      await redis.expire(`${auth.roomId}`, ttl);
+
+      return { success: true };
+    },
+    {
+      query: t.Object({ roomId: t.String() }),
+      body: t.Object({
+        sender: t.String({ maxLength: 30 }),
+        content: t.String({ maxLength: 1000 }),
+      }),
+      response: t.Object({
+        success: t.Boolean(),
+      }),
     }
-    const message = {
-      id: crypto.randomUUID().slice(0, 6),
-      sender,
-      content,
-      timestamp: Date.now(),
-      roomId: auth.roomId,
-    }
+  )
+  .get("/messages", async ({ auth }) => {
+    const messages = await redis.lrange(`messages:${auth.roomId}`, 0, -1);
 
-    await redis.rpush(`messages:${auth.roomId}`,{...message, token: auth.token });
-
-    await realtime.channel(auth.roomId).emit("chat.message", message);
-
-    const ttl = await redis.ttl(`meta:${auth.roomId}`);
-    await redis.expire(`messages:${auth.roomId}`, ttl);
-    await redis.expire(`history:${auth.roomId}`, ttl);
-    await redis.expire(`${auth.roomId}`, ttl);
-
-    return { success: true };
-  },
-  {
-    query: t.Object({ roomId: t.String() }),
-    body: t.Object({
-      sender: t.String({ maxLength: 30 }),
-      content: t.String({ maxLength: 1000 }),
-    }),
-    response: t.Object({
-      success: t.Boolean(),
-    }),
-  }
-);
+    return {
+      messages: messages.map((m: any) => ({
+        ...m,
+        token: m.token === auth.token ? auth.token : undefined,
+      })),
+    };
+  });
 export const api = new Elysia({ prefix: "/api" }).use(room).use(messages);
 export const GET = api.fetch;
 export const POST = api.fetch;

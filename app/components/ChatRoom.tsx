@@ -1,9 +1,10 @@
 "use client";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { Paperclip } from "lucide-react";
 import { useState } from "react";
 import type { ChatRoomProps } from "../interface";
 import { client } from "../lib/client";
+import { useRealtime } from "../lib/realtime-client";
 
 export default function Chat({ roomId }: ChatRoomProps) {
   const [copied, setCopied] = useState(false);
@@ -19,6 +20,16 @@ export default function Chat({ roomId }: ChatRoomProps) {
     const secs = seconds % 60;
     return `${mins}:${secs.toString().padStart(2, "0")}`;
   };
+
+  const { data: messages,refetch } =  useQuery({
+    queryKey: ["messages", roomId],
+    queryFn: async () => {
+      const res = await client.messages.messages.get({
+        query: { roomId: roomId as string },
+      });
+      return res.data?.messages;
+    }
+  })
   const { mutate: sendMessage, isPending } = useMutation({
     mutationFn: async ({ newMessage }: { newMessage: string }) => {
       const userName = localStorage.getItem("userName") as string;
@@ -28,6 +39,16 @@ export default function Chat({ roomId }: ChatRoomProps) {
       );
     },
   });
+
+  useRealtime({
+    channels:[roomId],
+    events: ["chat.message","chat.destroy"],
+    onData:({event})=>{
+      if(event==="chat.message"){
+        refetch();
+      }
+    }
+  })
   return (
     <div className="md:max-w-lg mx-auto">
       <header className="flex items-center justify-between gap-3 p-3 w-full">
@@ -66,6 +87,7 @@ export default function Chat({ roomId }: ChatRoomProps) {
           Destroy Now
         </button>
       </header>
+
       <main className="flex flex-col h-[calc(100vh-80px)]">
         <div className="flex-1 overflow-y-auto p-4 space-y-4" />
         <div className="border-t border-zinc-800 p-4">
