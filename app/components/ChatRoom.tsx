@@ -33,9 +33,9 @@ export default function Chat({ roomId }: ChatRoomProps) {
   });
   const { mutate: sendMessage, isPending } = useMutation({
     mutationFn: async ({ newMessage }: { newMessage: string }) => {
-      const userName = localStorage.getItem("userName") as string;
+      const userName = localStorage.getItem("username");
       await client.messages.messages.post(
-        { sender: userName, content: newMessage },
+        { sender: String(userName), content: newMessage },
         { query: { roomId: roomId as string } }
       );
     },
@@ -51,23 +51,29 @@ export default function Chat({ roomId }: ChatRoomProps) {
   });
 
   useEffect(() => {
-    if (ttlData?.ttl !== undefined) {
+    if (ttlData?.ttl !== undefined && TimeRemaining === null) {
       setTimeRemaining(ttlData.ttl);
     }
-  });
+  }, [ttlData?.ttl, TimeRemaining]);
   useEffect(() => {
-    if (TimeRemaining === null || TimeRemaining < 0) return;
-    if (TimeRemaining === 0) {
-      router.push("/error/room-destroyed");
-      return;
-    }
+    if (TimeRemaining === null) return;
+
     const interval = setInterval(() => {
-      setTimeRemaining((prev) => (prev !== null ? prev - 1 : null));
+      setTimeRemaining((prev) => {
+        if (prev === null) return null;
+        if (prev <= 1) {
+          clearInterval(interval);
+          router.push("/errors/room-destroyed");
+          return 0;
+        }
+        return prev - 1;
+      });
     }, 1000);
+
     return () => clearInterval(interval);
   }, [TimeRemaining, router]);
 
-  const {mutate:destroyRoom} = useMutation({
+  const { mutate: destroyRoom } = useMutation({
     mutationFn: async () => {
       await client.room.delete(null, { query: { roomId: roomId as string } });
     },
@@ -115,7 +121,7 @@ export default function Chat({ roomId }: ChatRoomProps) {
           </span>
         </div>
         <button
-        onClick={() => destroyRoom()}
+          onClick={() => destroyRoom()}
           className="px-3 py-1.5 text-xs sm:text-sm
                bg-red-600 hover:bg-red-700 hover:scale-105 active:scale-95
                rounded font-medium whitespace-nowrap

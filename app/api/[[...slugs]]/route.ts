@@ -105,5 +105,6 @@ const messages = new Elysia({ prefix: "/messages" })
 export const api = new Elysia({ prefix: "/api" }).use(room).use(messages);
 export const GET = api.fetch;
 export const POST = api.fetch;
+export const DELETE = api.fetch;
 
 export type App = typeof api;
