@@ -2,7 +2,12 @@
 import { useState } from "react";
 import type { RoomActionsProps, JoiningMode } from "../interface";
 
-export default function RoomActions({ oncreateRoom, onjoinRoom, JoinMode, room}: RoomActionsProps) {
+export default function RoomActions({
+  oncreateRoom,
+  onjoinRoom,
+  JoinMode,
+  room,
+}: RoomActionsProps) {
   const [mode, setMode] = useState<JoiningMode>(JoinMode || "idle");
   const [roomTTL, setRoomTTL] = useState<number | "">(10);
   const [roomCode, setRoomCode] = useState(room || "");

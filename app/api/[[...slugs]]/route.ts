@@ -31,7 +31,8 @@ const room = new Elysia({ prefix: "/room" })
     "ttl",
     async ({ auth }) => {
       const ttl = await redis.ttl(`meta:${auth.roomId}`);
-      return { ttl: ttl > 0 ? ttl : 0 };
+      const expireAt = await redis.hget<number>(`meta:${auth.roomId}`, "expireAt");
+      return { expireAt, ttl: ttl > 0 ? ttl : 0 };
     },
     { query: t.Object({ roomId: t.String() }) }
   )
