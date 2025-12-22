@@ -113,7 +113,7 @@ export default function Chat({ roomId }: ChatRoomProps) {
               {copied ? "Copied!" : "Copy"}
             </button>
           </div>
-        </div>
+        </div> 
         <div className="flex flex-col items-center text-xs text-gray-400 whitespace-nowrap gap-1">
           <span>Self destruct</span>
           <span className="font-mono text-red-400 text-sm sm:text-base">
@@ -133,6 +133,13 @@ export default function Chat({ roomId }: ChatRoomProps) {
 
       <main className="flex flex-col h-[calc(100vh-80px)]">
         <div className="flex-1 overflow-y-auto p-4 space-y-3">
+
+          {messages?.length === 0 && (
+            <p className="text-center mt-24 text-zinc-400">
+              No messages yet. Start the conversation!
+            </p>
+          )}
+
           {messages?.map((msg: any) => {
             const isMe = !!msg.token;
 
@@ -145,7 +152,7 @@ export default function Chat({ roomId }: ChatRoomProps) {
                   className={`max-w-[75%] rounded-xl px-3 py-2 text-sm
             ${
               isMe
-                ? "bg-amber-500 text-black rounded-br-sm"
+                ? "bg-zinc-100 text-black rounded-br-sm"
                 : "bg-zinc-800 text-zinc-100 rounded-bl-sm"
             }`}
                 >
