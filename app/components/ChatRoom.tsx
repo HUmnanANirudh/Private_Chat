@@ -9,7 +9,7 @@ import { useRealtime } from "../lib/realtime-client";
 export default function Chat({ roomId }: ChatRoomProps) {
   const [copied, setCopied] = useState(false);
   const [input, setInput] = useState("");
-  const [expireAt, setExpireAt] = useState<number | null>(null);
+  const [expiresAt, setExpiresAt] = useState<number | null>(null);
   const [now, setNow] = useState<number>(Date.now());
   const router = useRouter();
   const handleCopy = async () => {
@@ -51,28 +51,28 @@ export default function Chat({ roomId }: ChatRoomProps) {
     },
   });
   useEffect(() => {
-    if (ttlData?.expireAt && expireAt === null) {
-      setExpireAt(ttlData.expireAt);
+    if (ttlData?.expiresAt && expiresAt === null) {
+      setExpiresAt(ttlData.expiresAt);
     }
-  }, [ttlData?.expireAt, expireAt]);
+  }, [ttlData?.expiresAt, expiresAt]);
   useEffect(() => {
-    if (!expireAt) return;
+    if (!expiresAt) return;
 
     const interval = setInterval(() => {
       const current = Date.now();
       setNow(current);
 
-      if (current >= expireAt) {
+      if (current >= expiresAt) {
         clearInterval(interval);
         router.push("/errors/room-destroyed");
       }
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [expireAt, router]);
+  }, [expiresAt, router]);
 
   const TimeRemaining =
-    expireAt !== null ? Math.max(0, Math.floor((expireAt - now) / 1000)) : null;
+    expiresAt !== null ? Math.max(0, Math.floor((expiresAt - now) / 1000)) : null;
   const { mutate: destroyRoom } = useMutation({
     mutationFn: async () => {
       await client.room.delete(null, { query: { roomId: roomId as string } });

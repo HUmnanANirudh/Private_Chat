@@ -6,5 +6,5 @@ export const CreateRoomSchema = t.Object({
 
 export const RoomResponseSchema = t.Object({
   roomId: t.String(),
-  expireAt: t.Number()
+  expiresAt: t.Number()
 });

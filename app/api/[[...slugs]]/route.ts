@@ -1,5 +1,6 @@
 import { realtime } from "@/app/lib/realtime";
 import { redis } from "@/app/lib/redis";
+import { randomUUID } from "crypto";
 import { Elysia, t } from "elysia";
 import { CreateRoomSchema } from "../schemas";
 import { authMiddleware } from "./auth";
@@ -7,20 +8,33 @@ import { authMiddleware } from "./auth";
 const room = new Elysia({ prefix: "/room" })
   .post(
     "/create",
-    async ({ body }) => {
-      const { ROOM_TTL_SECONDS } = body;
-      const roomId = crypto.randomUUID().slice(0, 8);
-      const expireAt = Date.now() + ROOM_TTL_SECONDS * 1000;
-      await redis.hset(`meta:${roomId}`, {
-        connected: [],
-        createdAt: Date.now(),
-        expireAt,
-      });
-      await redis.expire(`meta:${roomId}`, ROOM_TTL_SECONDS);
-      return {
-        roomId,
-        expireAt,
-      };
+    async ({ body, set }) => {
+      try {
+        console.log("Creating room with body:", body);
+        const { ROOM_TTL_SECONDS } = body;
+
+        const roomId = randomUUID().slice(0, 8);
+        console.log("Generated room ID:", roomId, "with TTL:", ROOM_TTL_SECONDS);
+        
+        const expiresAt = Date.now() + ROOM_TTL_SECONDS * 1000;
+        await redis.hset(`meta:${roomId}`, {
+          connected: JSON.stringify([]),
+          createdAt: Date.now(),
+          expiresAt,
+        });
+        await redis.expire(`meta:${roomId}`, ROOM_TTL_SECONDS);
+        return {
+          roomId,
+          expiresAt,
+        };
+      } catch (error: any) {
+        console.error("Error creating room:", error);
+        set.status = 500;
+        return {
+          error: error.message || "Internal Server Error",
+          stack: process.env.NODE_ENV === "development" ? error.stack : undefined,
+        };
+      }
     },
     {
       body: CreateRoomSchema,
@@ -28,11 +42,11 @@ const room = new Elysia({ prefix: "/room" })
   )
   .use(authMiddleware)
   .get(
-    "ttl",
+    "/ttl",
     async ({ auth }) => {
       const ttl = await redis.ttl(`meta:${auth.roomId}`);
-      const expireAt = await redis.hget<number>(`meta:${auth.roomId}`, "expireAt");
-      return { expireAt, ttl: ttl > 0 ? ttl : 0 };
+      const expiresAt = await redis.hget<number>(`meta:${auth.roomId}`, "expiresAt");
+      return { expiresAt, ttl: ttl > 0 ? ttl : 0 };
     },
     { query: t.Object({ roomId: t.String() }) }
   )
@@ -42,7 +56,7 @@ const room = new Elysia({ prefix: "/room" })
       await realtime
         .channel(auth.roomId)
         .emit("chat.destroy", { isDestroyed: true });
-      Promise.all([
+      await Promise.all([
         await redis.del(`meta:${auth.roomId}`),
         await redis.del(`messages:${auth.roomId}`),
       ]);
@@ -61,7 +75,7 @@ const messages = new Elysia({ prefix: "/messages" })
         throw new Error("Room does not exist");
       }
       const message = {
-        id: crypto.randomUUID().slice(0, 6),
+        id: randomUUID().slice(0, 6),
         sender,
         content,
         timestamp: Date.now(),
@@ -97,7 +111,7 @@ const messages = new Elysia({ prefix: "/messages" })
     const messages = await redis.lrange(`messages:${auth.roomId}`, 0, -1);
 
     return {
-      messages: messages.map((m: any) => ({
+      messages: messages.map((m:any) => ({
         ...m,
         token: m.token === auth.token ? auth.token : undefined,
       })),

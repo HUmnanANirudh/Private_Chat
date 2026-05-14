@@ -11,17 +11,19 @@ export const proxy = async(req: NextRequest) => {
     }
 
     const roomId = roomIdMatch[1];
-    const meta = await redis.hgetall<{connected: string[],createdAt: number,expiresAt: number}>(`meta:${roomId}`);
+    const meta = await redis.hgetall<{connected: string[] | string,createdAt: number,expiresAt: number}>(`meta:${roomId}`);
     if(!meta){
-        return NextResponse.redirect(new URL("/errors/not-found", req.url));
+        return NextResponse.redirect(new URL("/errors/room-not-found", req.url));
     }
+
+    const connected = typeof meta.connected === 'string' ? JSON.parse(meta.connected) : meta.connected;
     const existingTokens =req.cookies.get("x-auth-token")?.value;
 
-    if(existingTokens && meta.connected.includes(existingTokens)){
+    if(existingTokens && connected.includes(existingTokens)){
         return NextResponse.next();
     }
 
-    if(meta.connected.length >=2){
+    if(connected.length >=2){
         return NextResponse.redirect(new URL("/errors/room-full", req.url));
     }
     
@@ -35,9 +37,18 @@ export const proxy = async(req: NextRequest) => {
         secure:process.env.NODE_ENV === "production",
     })
 
+    let connectedUpdated =  await redis.hget<string[] | string>(`meta:${roomId}`,'connected');
+    if (typeof connectedUpdated === 'string') {
+        try {
+            connectedUpdated = JSON.parse(connectedUpdated);
+        } catch (e) {
+            // fallback if it's not JSON
+        }
+    }
+
     await redis.hset(`meta:${roomId}`,{
         ...meta,
-        connected:[...meta.connected,token],
+        connected: JSON.stringify([...(connectedUpdated as string[] || []),token]),
     });
 
     return respone;
