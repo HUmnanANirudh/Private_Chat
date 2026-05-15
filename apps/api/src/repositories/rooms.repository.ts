@@ -1,10 +1,25 @@
 import { client } from "../lib/redis";
-import type { Participant } from "@repo/types";
+import crypto from "crypto";
 
 export const getRoomMeta = (roomId: string) => {
     const roomMetaKey = `room:meta:${roomId}`
     return client.hgetall(roomMetaKey);
 };
+
+export const createRoom = async (ttlminutes:number,createdToken:string)=>{
+    const roomId = crypto.randomUUID().slice(0,12);
+    const ttlseconds = ttlminutes*60;
+
+    await client.hset(
+        `room:meta:${roomId}`,
+        "expiresAt",
+        String(Date.now() + ttlseconds * 1000),
+        "connected",
+        JSON.stringify([createdToken])
+    );
+    client.expire(`room:meta:${roomId}`, ttlseconds);
+    return roomId;
+}
 
 export const updatedUsers = (roomId: string, connected: string[]) => {
     const roomMetaKey = `room:meta:${roomId}`
@@ -15,19 +30,8 @@ export const updatedUsers = (roomId: string, connected: string[]) => {
     );
 };
 
-export const getRoomParticipants = (roomId: string): Promise<Record<string, Participant>> => {
-    const roomKey = `room:participant:${roomId}`
-    return client.hget(roomKey, "participants").then(p => {
-        if (!p) return {};
-        try {
-            return JSON.parse(p);
-        } catch {
-            return {};
-        }
-    }) as Promise<Record<string, Participant>>;
-};
-
-export const updateParticipants = (roomId: string, participants: Record<string, Participant>) => {
-    const roomKey = `room:participant:${roomId}`
-    return client.hset(roomKey, "participants", JSON.stringify(participants));
-};
+export const destroyRoom = async (roomId: string) => {
+    const roomMetaKey = `room:meta:${roomId}`;
+    const deleted = await client.del(roomMetaKey);
+    return deleted > 0;
+}

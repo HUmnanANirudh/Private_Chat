@@ -1,11 +1,13 @@
 import { Router } from "express";
-import { createRoom, destroyRoom, getRoomData } from "../controllers";
+import { createRoomController, destroyRoomController, getRoomData } from "../controllers";
+import { assign } from "../middleware/assign";
+import { extract } from "../middleware/extract";
 
 export const router = Router();
 
 router.get("/:roomId", getRoomData);
-router.post("/create",createRoom); 
-router.delete("/:roomId", destroyRoom);
+router.post("/create",assign,createRoomController); 
+router.delete("/", extract, destroyRoomController);
 
 // router.post("/", async (req: Request, res: Response) => {
 //     try {

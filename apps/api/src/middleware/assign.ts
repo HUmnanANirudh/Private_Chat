@@ -1,7 +1,7 @@
 import type { Request, Response, NextFunction } from "express";
 
 export const assign = (req: Request, res: Response, next: NextFunction) => {
-    let token = req.cookies?.["x-auth-value"].value;
+    let token = req.cookies?.["x-auth-value"]
 
     if (!token) {
         token =  crypto.randomUUID().slice(0, 32);
