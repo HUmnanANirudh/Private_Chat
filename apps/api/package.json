@@ -3,16 +3,26 @@
   "module": "index.ts",
   "type": "module",
   "private": true,
+  "scripts": {
+    "dev": "bun --env-file ../../.env --watch src/index.ts",
+    "build": "bun build ./src/index.ts --outdir ./dist --target bun",
+    "start": "bun --env-file ../../.env src/index.ts"
+  },
+
+
   "devDependencies": {
     "@types/bun": "latest",
+
     "@types/express": "^5.0.6"
   },
   "peerDependencies": {
     "typescript": "^5"
   },
   "dependencies": {
-    "express": "^5.2.1",
     "@repo/types": "workspace:*",
-    "@repo/utils": "workspace:*"
+    "@repo/utils": "workspace:*",
+    "@types/cors": "^2.8.19",
+    "cors": "^2.8.6",
+    "express": "^5.2.1"
   }
 }

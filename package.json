@@ -8,15 +8,14 @@
     "packages/*"
   ],
   "scripts": {
-    "dev:web": "bun run --cwd apps/web dev",
-    "dev:api": "bun run --cwd apps/api dev",
-
-    "build:web": "bun run --cwd apps/web build",
-    "build:api": "bun run --cwd apps/api build",
-
+    "dev:web": "bun --env-file .env --filter web dev",
+    "dev:api": "bun --env-file .env --filter api dev",
+    "build:web": "bun --filter web build",
+    "build:api": "bun --filter api build",
     "build": "bun run build:web && bun run build:api",
-
-    "start": "bun run --cwd apps/api start"
+    "start:web": "bun --env-file .env --filter web start",
+    "start:api": "bun --env-file .env --filter api start",
+    "start": "bun run start:api"
   },
   "devDependencies": {
     "@types/bun": "latest"
