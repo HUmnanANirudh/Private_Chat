@@ -5,6 +5,9 @@ console.log("Connecting to Redis at:", redisUrl);
 
 export const client = new RedisClient(redisUrl);
 
+export const roomKey = (roomId: string) => `room:${roomId}`;
+export const roomMetaKey = (roomId: string) => `room:meta:${roomId}`;
+
 client.onconnect = () => {
     console.log("Redis connected");
 };
