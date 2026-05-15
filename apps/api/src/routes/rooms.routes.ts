@@ -1,69 +1,71 @@
 import { Router } from "express";
-import type { Request, Response } from "express";
-import { createRoom, getRoomState, destroyRoom } from "../services/rooms.service";
-import { roomAccess } from "../middleware/roomAccess";
+import { createRoom, destroyRoom, getRoomData } from "../controllers";
 
-const router = Router();
+export const router = Router();
 
-router.post("/", async (req: Request, res: Response) => {
-    try {
-        const { ttlMinutes } = req.body;
+router.get("/:roomId", getRoomData);
+router.post("/create",createRoom); 
+router.delete("/:roomId", destroyRoom);
 
-        if (!ttlMinutes || typeof ttlMinutes !== "number" || ttlMinutes < 1 || ttlMinutes > 1440) {
-            return res.status(400).json({ message: "ttlMinutes must be a number between 1 and 1440 (24 hours)" });
-        }
+// router.post("/", async (req: Request, res: Response) => {
+//     try {
+//         const { ttlMinutes } = req.body;
 
-        const room = await createRoom(ttlMinutes);
+//         if (!ttlMinutes || typeof ttlMinutes !== "number" || ttlMinutes < 1 || ttlMinutes > 1440) {
+//             return res.status(400).json({ message: "ttlMinutes must be a number between 1 and 1440 (24 hours)" });
+//         }
 
-        return res.status(201).json({
-            roomId: room.id,
-            expiresAt: room.expiresAt,
-            maxParticipants: room.maxParticipants
-        });
-    } catch (err) {
-        console.error("Error creating room:", err);
-        return res.status(500).json({ message: "Failed to create room", error: err });
-    }
-});
+//         const room = await createRoom(ttlMinutes);
 
-router.get("/:roomId", roomAccess, async (req: Request, res: Response) => {
-    try {
-        const { roomId } = req.params;
-        const state = await getRoomState(String(roomId));
+//         return res.status(201).json({
+//             roomId: room.id,
+//             expiresAt: room.expiresAt,
+//             maxParticipants: room.maxParticipants
+//         });
+//     } catch (err) {
+//         console.error("Error creating room:", err);
+//         return res.status(500).json({ message: "Failed to create room", error: err });
+//     }
+// });
 
-        if (!state) {
-            return res.status(404).json({ message: "Room not found" });
-        }
+// router.get("/:roomId", roomAccess, async (req: Request, res: Response) => {
+//     try {
+//         const { roomId } = req.params;
+//         const state = await getRoomState(String(roomId));
 
-        return res.status(200).json({
-            id: state.id,
-            hostId: state.hostId,
-            maxParticipants: state.maxParticipants,
-            participantCount: Object.keys(state.participants).length,
-            createdAt: state.createdAt,
-            expiresAt: state.expiresAt,
-            hasActivePoll: !!state.activePoll
-        });
-    } catch (err) {
-        console.error("Error getting room:", err);
-        return res.status(500).json({ message: "Failed to get room", error: err });
-    }
-});
+//         if (!state) {
+//             return res.status(404).json({ message: "Room not found" });
+//         }
 
-router.delete("/:roomId", roomAccess, async (req: Request, res: Response) => {
-    try {
-        const { roomId } = req.params;
-        const destroyed = await destroyRoom(String(roomId));
+//         return res.status(200).json({
+//             id: state.id,
+//             hostId: state.hostId,
+//             maxParticipants: state.maxParticipants,
+//             participantCount: Object.keys(state.participants).length,
+//             createdAt: state.createdAt,
+//             expiresAt: state.expiresAt,
+//             hasActivePoll: !!state.activePoll
+//         });
+//     } catch (err) {
+//         console.error("Error getting room:", err);
+//         return res.status(500).json({ message: "Failed to get room", error: err });
+//     }
+// });
 
-        if (!destroyed) {
-            return res.status(404).json({ message: "Room not found or already destroyed" });
-        }
+// router.delete("/:roomId", roomAccess, async (req: Request, res: Response) => {
+//     try {
+//         const { roomId } = req.params;
+//         const destroyed = await destroyRoom(String(roomId));
 
-        return res.status(200).json({ message: "Room destroyed successfully" });
-    } catch (err) {
-        console.error("Error destroying room:", err);
-        return res.status(500).json({ message: "Failed to destroy room", error: err });
-    }
-});
+//         if (!destroyed) {
+//             return res.status(404).json({ message: "Room not found or already destroyed" });
+//         }
+
+//         return res.status(200).json({ message: "Room destroyed successfully" });
+//     } catch (err) {
+//         console.error("Error destroying room:", err);
+//         return res.status(500).json({ message: "Failed to destroy room", error: err });
+//     }
+// });
 
 export default router;

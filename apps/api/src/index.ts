@@ -1,36 +1,46 @@
 import Express from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
-import roomsRouter from "./routes/rooms.routes";
-import "./services/ws.service";
+import { router } from "./routes";
+import { client, initRedis } from "./lib/redis";
 
 const app = Express();
 
 app.use(cors());
 app.use(cookieParser());
 app.use(Express.json());
-
-app.use("/api/v1/rooms", roomsRouter);
+app.use("/api/v1", router);
 
 const PORT = process.env.PORT || 9000;
 
-app.get("/health", (_req, res) => {
+app.get("/api/v1/health", (_req, res) => {
     try {
         return res.status(200).json({
-            date: new Date().toString(),
-            message: "Service is running"
+            message: "Service is running",
+            date: new Date().toString()
         });
     } catch (err) {
         console.log("Error in /health", err);
         return res.status(500).json({
-            date: new Date().toString(),
+            error: err,
             message: "Service is not running",
-            error: err
+            date: new Date().toString()
         });
     }
 });
 
-app.listen(PORT, () => {
-    console.log(`HTTP server started on port ${PORT}`);
-    console.log(`WebSocket server running on port ${Number(process.env.WS_PORT) || 9001}`);
-});
+async function start() {
+    try {
+        await initRedis();
+        console.log("Redis pre-warmed ✓");
+    } catch (err) {
+        console.error("Redis unavailable at startup:", err);
+        process.exit(1);
+    }
+
+    app.listen(PORT, () => {
+        console.log(`HTTP server started on port ${PORT}`);
+    });
+}
+
+start();

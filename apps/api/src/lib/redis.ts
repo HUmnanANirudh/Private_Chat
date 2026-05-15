@@ -1,17 +1,17 @@
 import { RedisClient } from "bun";
 
-const redisUrl = process.env.REDIS_URL || "redis://localhost:6379";
-console.log("Connecting to Redis at:", redisUrl);
-
+const redisUrl = process.env.REDIS_URL;
+if(!redisUrl) {
+    throw new Error("REDIS_URL is not defined in environment variables");
+}
 export const client = new RedisClient(redisUrl);
 
-export const roomKey = (roomId: string) => `room:${roomId}`;
-export const roomMetaKey = (roomId: string) => `room:meta:${roomId}`;
-
-client.onconnect = () => {
-    console.log("Redis connected");
-};
-
-client.onclose = () => {
-    console.log("Redis disconnected");
-};
+export const initRedis = async () => {
+    try {
+        await client.connect();
+        console.log("Connected to Redis successfully");
+    } catch (err) {
+        console.error("Failed to connect to Redis:", err);
+        throw err;
+    }
+}
