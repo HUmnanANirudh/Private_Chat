@@ -17,7 +17,12 @@ const getRoomData = z.object({
   roomId: z.string("roomId is required").min(1),
 });
 
+const joinRoom = z.object({
+  roomId: z.string("roomId is required").min(1),
+});
+
 export const roomValidation = {
   "/room/create": { POST: createRoom },
+  "/room/join": { GET: joinRoom },
   "/room": { GET: getRoomData, DELETE: destroyRoom },
 };
