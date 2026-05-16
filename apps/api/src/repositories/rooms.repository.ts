@@ -1,9 +1,16 @@
 import { client } from "../lib/redis";
 import crypto from "crypto";
 
-export const getRoomMeta = (roomId: string) => {
-    const roomMetaKey = `room:meta:${roomId}`
-    return client.hgetall(roomMetaKey);
+export const getRoomMeta = async (roomId: string) => {
+    const [meta, participants] = await Promise.all([
+        client.hgetall(`room:meta:${roomId}`),
+        client.smembers(`room:participants:${roomId}`)
+    ]);
+    return {
+        meta ,
+        participants,
+        roomId
+    };
 };
 
 export const createRoom = async (ttlminutes:number,createdToken:string)=>{
@@ -12,26 +19,36 @@ export const createRoom = async (ttlminutes:number,createdToken:string)=>{
 
     await client.hset(
         `room:meta:${roomId}`,
+        "createdAt",
+        String(Date.now()),
         "expiresAt",
         String(Date.now() + ttlseconds * 1000),
-        "connected",
-        JSON.stringify([createdToken])
+        "createBy",
+        createdToken
     );
-    client.expire(`room:meta:${roomId}`, ttlseconds);
+    await client.sadd(`room:participants:${roomId}`,createdToken);
+
+    await Promise.all([
+        client.expire(`room:meta:${roomId}`, ttlseconds),
+        client.expire(`room:participants:${roomId}`, ttlseconds)
+    ]);
     return roomId;
 }
 
-export const updatedUsers = (roomId: string, connected: string[]) => {
-    const roomMetaKey = `room:meta:${roomId}`
-    return client.hset(
-        roomMetaKey,
-        "connected",
-        JSON.stringify(connected)
+export const updatedUsers = (roomId: string,token: string) => {
+    return client.sadd(
+        `room:participants:${roomId}`,token
     );
 };
 
 export const destroyRoom = async (roomId: string) => {
     const roomMetaKey = `room:meta:${roomId}`;
-    const deleted = await client.del(roomMetaKey);
-    return deleted > 0;
+    const participantsKey = `room:participants:${roomId}`;
+
+    const deleted = Promise.all([
+        client.del(roomMetaKey),
+        client.del(participantsKey)
+    ])
+    
+    return deleted;
 }

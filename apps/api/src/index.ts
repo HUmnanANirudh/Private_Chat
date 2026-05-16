@@ -1,19 +1,20 @@
-import Express from "express";
+import express from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import { router } from "./routes";
-import { client, initRedis } from "./lib/redis";
+import { initRedis } from "./lib/redis";
+import { validationMiddleware } from "./middleware";
 
-const app = Express();
+const app = express();
 
 app.use(cors());
 app.use(cookieParser());
-app.use(Express.json());
-app.use("/api/v1", router);
+app.use(express.json());
+app.use("/api/v1", validationMiddleware, router);
 
 const PORT = process.env.PORT || 9000;
 
-app.get("/api/v1/health", (_req, res) => {
+app.get("/health", (_req, res) => {
     try {
         return res.status(200).json({
             message: "Service is running",

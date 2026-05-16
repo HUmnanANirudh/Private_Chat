@@ -1,16 +1,20 @@
 import type { Request, Response } from "express"
-import { getRoomMeta , createRoom,destroyRoom } from "../repositories/rooms.repository"
+import { getRoomMeta , createRoom,destroyRoom } from "../repositories"
 
 export const getRoomData = async (req: Request, res: Response) => {
     try {
-        const roomId = req.params.roomId
+        const roomId = req.query.roomId
+
         if(!roomId) {
             return res.status(400).json({
                 message: "Room id is required"
             })
         }
+
         const data = await getRoomMeta(String(roomId));
-        if(Object.keys(data).length === 0) {
+
+        console.log("Room data fetched for roomId:", roomId, "Data:", data);
+        if(Object.keys(data.meta).length === 0) {
             return res.status(404).json({
                 message: "Room not found"
             })
@@ -20,27 +24,27 @@ export const getRoomData = async (req: Request, res: Response) => {
             message: "room data fetched successfully",
             Data: data
         })
-    } catch (err) {
+    } catch (err:Error | any) {
         return res.status(500).json({
             message: "failed to fetch room data",
-            error: err
+            error: err?.message || err
         })
     }
-}
+};
 
 export const createRoomController = async (req: Request, res: Response) => {
     try {
-        const { ttlMinutes } = req.body;
+        const { ttlminutes } = req.body;
 
-        if (!ttlMinutes || typeof ttlMinutes !== "number" || ttlMinutes < 1 || ttlMinutes > 1440) {
-            return res.status(400).json({ message: "ttlMinutes must be a number between 1 and 1440 (24 hours)" });
+        if (!ttlminutes || typeof ttlminutes !== "number" || ttlminutes < 1 || ttlminutes > 1440) {
+            return res.status(400).json({ message: "ttlminutes must be a number between 1 and 1440 (24 hours)" });
         }
 
         const token = req.participantToken;
         if (!token) {
             return res.status(401).json({ message: "Unauthorized: No participant token" });
         }
-        const roomId = await createRoom(ttlMinutes, token);
+        const roomId = await createRoom(ttlminutes, token);
         return res.status(201).json({
             message: "Room created successfully",
             token,
@@ -71,8 +75,7 @@ export const destroyRoomController = async (req: Request, res: Response) => {
             });
         }
 
-        const connectedUsers = JSON.parse(existingRoom.connected || "[]");
-        if (!connectedUsers.includes(token)) {
+        if (!existingRoom.participants.includes(String(token))) {
             return res.status(403).json({
                 message: "Forbidden: You are not a participant of this room"
             });

@@ -1,11 +1,11 @@
 import { Router } from "express";
 import { createRoomController, destroyRoomController, getRoomData } from "../controllers";
-import { assign } from "../middleware/assign";
-import { extract } from "../middleware/extract";
+import { assign } from "../middleware/assign.middleware";
+import { extract } from "../middleware/extract.middleware";
 
 export const router = Router();
 
-router.get("/:roomId", getRoomData);
+router.get("/", getRoomData);
 router.post("/create",assign,createRoomController); 
 router.delete("/", extract, destroyRoomController);
 

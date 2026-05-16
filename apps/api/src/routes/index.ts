@@ -3,4 +3,4 @@ import roomsRouter from "./rooms.routes";
 
 export const router = Router();
 
-router.use("/rooms", roomsRouter);
+router.use("/room", roomsRouter);
