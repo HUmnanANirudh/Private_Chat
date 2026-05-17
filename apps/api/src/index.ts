@@ -4,6 +4,7 @@ import cookieParser from "cookie-parser";
 import { router } from "./routes";
 import { initRedis } from "./lib/redis";
 import { validationMiddleware } from "./middleware";
+import http from "http";
 import { websocketHandlers } from "./lib/websocket";
 
 const app = express();
@@ -39,29 +40,30 @@ async function start() {
         console.error("Redis unavailable at startup:", err);
         process.exit(1);
     }
-    const server = Bun.serve({
-        port: PORT,
-        fetch(req, server) {
-            const url = new URL(req.url);
-            
-            if (url.pathname === "/ws") {
-                const cookies = req.headers.get("cookie");
-                const token = req.headers.get("x-auth-value") || 
-                             (cookies?.split("; ").find(c => c.startsWith("x-auth-value="))?.split("=")[1] ?? null);
 
-                const success = server.upgrade(req, {
-                    data: { token }
-                });
-                
-                if (success) return undefined;
-            }
 
-            return (app as any)(req);
-        },
-        websocket: websocketHandlers,
+    const server = http.createServer(app);
+
+    server.on("upgrade", (req, socket, head) => {
+        const url = new URL(req.url || "", `http://${req.headers.host}`);
+
+        if (url.pathname !== "/ws") {
+            socket.destroy();
+            return;
+        }
+        const cookie = req.headers.cookie;
+        const token = cookie?.split(";").find((c: string) => c.trim().startsWith("x-auth-value="))?.split("=")[1] || null;
+
+        (Bun as any).upgrade(req, {
+            data: {
+                token,
+            },
+            websocket: websocketHandlers,
+        });
     });
-
-    console.log(`Server started on port ${server.port}`);
+    server.listen(PORT, () => {
+        console.log(`Server (HTTP+ws) is running on port ${PORT}`);
+    })
 }
 
 start();
