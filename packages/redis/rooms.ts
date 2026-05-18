@@ -1,4 +1,4 @@
-import { client } from "../../../../packages/redis";
+import { client } from "./index";
 import crypto from "crypto";
 
 export const getRoomMeta = async (roomId: string) => {

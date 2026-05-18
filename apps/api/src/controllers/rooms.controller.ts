@@ -4,7 +4,7 @@ import {
   createRoom,
   destroyRoom,
   updatedUsers,
-} from "../repositories";
+} from "../../../../packages/redis";
 
 export const getRoomDataController = async (req: Request, res: Response) => {
   try {

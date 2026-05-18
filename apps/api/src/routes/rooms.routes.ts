@@ -1,7 +1,6 @@
 import { Router } from "express";
 import { createRoomController, destroyRoomController, getRoomDataController,joinRoomController } from "../controllers";
-import { assign } from "../middleware/assign.middleware";
-import { extract } from "../middleware/extract.middleware";
+import { assign, extract } from "../middleware";
 
 export const router = Router();
 

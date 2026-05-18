@@ -1,6 +1,7 @@
 import type { ServerWebSocket } from "bun";
 import { registry } from "../registry";
 import type { wsData } from "../types";
+import { getRoomMeta } from "../../../../packages/redis";
 export const joinRoomHandler = async (ws: ServerWebSocket<wsData>,roomId:string,token:string) =>{
     let room = registry.get(roomId);
     const existingRoom = await getRoomMeta(String(roomId));
