@@ -1,24 +1,62 @@
-const server = Bun.serve({
-  port: 3000,
+import type { wsData } from "./types";
+import {
+  answerHandler,
+  offerHandler,
+  iceCandidatesHandler,
+  joinRoomHandler,
+  peerDisconnectHandler,
+} from "./handlers";
+
+const server = Bun.serve<wsData>({
+  port: 9001,
   fetch(req, server) {
-    if(server.upgrade(req)) {
-      return;
+    const upgrade = server.upgrade(req, {
+      data: {
+        roomId: "",
+        token: ""
+      }
+    });
+
+    if (!upgrade) {
+      return undefined;
     }
-    return new Response("Hello World");
+
+    return new Response("WebSocket connection established", { status: 400 });
   },
   websocket: {
     open(ws) {
-      console.log("WebSocket opened");
+      console.log("WebSocket opened", ws);
     },
     message(ws, message) {
-      console.log("Received message:", message);
-      ws.send(`Echo: ${message}`);
+      try {
+        const data = JSON.parse(message.toString());
+
+        switch (data.type) {
+          case "join_room":
+            joinRoomHandler(ws, data.roomId, data.token);
+            break;
+          case "offer":
+            offerHandler(data.roomId, data.token, data.sdp);
+            break;
+          case "answer":
+            answerHandler(data.roomId, data.token, data.sdp);
+            break;
+          case "ice-candidate":
+            iceCandidatesHandler(data.roomId, data.token, data.candidate);
+            break;
+          default:
+            console.log("Unknown message type:", data.type);
+        }
+      } catch (err) {
+        console.error(err);
+      }
     },
-    close(ws, code, reason) {
-      console.log(`WebSocket closed: ${code} - ${reason}`);
+    close(ws) {
+      if (!ws.data) return;
+
+      peerDisconnectHandler(ws.data.roomId, ws.data.token);
     },
   },
 });
 
 console.log(`WebSocket server running at ws://localhost:${server.port}`);
-
