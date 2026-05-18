@@ -51,5 +51,4 @@ export const joinRoomHandler = async (ws: ServerWebSocket<wsData>, roomId: strin
       }));
     }
   }
-
 }
