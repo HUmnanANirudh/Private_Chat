@@ -15,5 +15,3 @@ export const initRedis = async () => {
         throw err;
     }
 }
-
-export * from "./rooms";
