@@ -10,9 +10,6 @@
       "#/*": ["./src/*"],
       "@/*": ["./src/*"],
       "@repo/types": ["../../packages/types/src"],
-      "@repo/utils": ["../../packages/utils/src"],
-      "@repo/api-client": ["../../packages/api-client/src"],
-      "@repo/rtc-core": ["../../packages/rtc-core/src"]
     },
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "types": ["vite/client"],
