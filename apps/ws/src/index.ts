@@ -10,18 +10,25 @@ import {
 const server = Bun.serve<wsData>({
   port: 9001,
   fetch(req, server) {
+    const cookieHeader = req.headers.get("cookie");
+    const match = cookieHeader?.match(/x-auth-value=([^;]+)/);
+    const token = match ? match[1] : "";
+  
+    if (!token) {
+      return new Response("Unauthorized", { status: 401 });
+    }
     const upgrade = server.upgrade(req, {
       data: {
         roomId: "",
-        token: ""
+        token: token
       }
     });
 
     if (!upgrade) {
-      return undefined;
+      return new Response("Upgrade failed", { status: 400 });
     }
 
-    return new Response("WebSocket connection established", { status: 400 });
+    return undefined;
   },
   websocket: {
     open(ws) {
@@ -30,7 +37,7 @@ const server = Bun.serve<wsData>({
     message(ws, message) {
       try {
         const data = JSON.parse(message.toString());
-
+        console.log(data);
         switch (data.type) {
           case "join_room":
             joinRoomHandler(ws, data.roomId, data.token);
