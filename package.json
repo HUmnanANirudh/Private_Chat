@@ -10,12 +10,16 @@
   "scripts": {
     "dev:web": "bun --env-file .env --filter web dev",
     "dev:api": "bun --env-file .env --filter api dev",
+    "dev:ws": "bun --env-file .env --filter ws dev",
+    "dev": "bun run --parallel dev:api dev:web dev:ws",
     "build:web": "bun --filter web build",
     "build:api": "bun --filter api build",
-    "build": "bun run build:web && bun run build:api",
+    "build:ws": "bun --filter ws build",
+    "build": "bun run --parallel build:api build:ws build:web",
     "start:web": "bun --env-file .env --filter web start",
     "start:api": "bun --env-file .env --filter api start",
-    "start": "bun run start:api"
+    "start:ws": "bun --env-file .env --filter ws start",
+    "start": "bun run --parallel start:api start:ws start:web"
   },
   "devDependencies": {
     "@types/bun": "latest"
