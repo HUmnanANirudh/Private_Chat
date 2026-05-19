@@ -3,10 +3,11 @@ import { registry } from "../registry";
 import type { wsData } from "../types";
 import { getRoomMeta } from "../../../../packages/redis/rooms";
 
-export const joinRoomHandler = async (ws: ServerWebSocket<wsData>, roomId: string, token: string) => {
+export const joinRoomHandler = async (ws: ServerWebSocket<wsData>, roomId: string) => {
 
   const roomData = await getRoomMeta(roomId);
-
+  const token = ws.data.token;
+  console.log("Joining room:", roomId, "with token:", token);
   if (Object.keys(roomData.meta).length === 0) {
     ws.send(JSON.stringify({
       type: "error",

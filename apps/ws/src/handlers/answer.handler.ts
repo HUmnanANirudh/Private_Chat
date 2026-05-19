@@ -1,8 +1,7 @@
 import { registry } from "../registry";
 
-export const answerHandler = (roomId: string, senderToken: string, sdp:RTCSessionDescriptionInit) => {
+export const answerHandler = (roomId: string,senderToken: string, sdp:RTCSessionDescriptionInit) => {
     const room = registry.get(roomId);
-
     if (!room) {
         return;
     }

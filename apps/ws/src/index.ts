@@ -13,17 +13,16 @@ const server = Bun.serve<wsData>({
     const cookieHeader = req.headers.get("cookie");
     const match = cookieHeader?.match(/x-auth-value=([^;]+)/);
     const token = match ? match[1] : "";
-  
+
     if (!token) {
       return new Response("Unauthorized", { status: 401 });
     }
     const upgrade = server.upgrade(req, {
       data: {
         roomId: "",
-        token: token
-      }
+        token: token,
+      },
     });
-
     if (!upgrade) {
       return new Response("Upgrade failed", { status: 400 });
     }
@@ -32,15 +31,18 @@ const server = Bun.serve<wsData>({
   },
   websocket: {
     open(ws) {
-      console.log("WebSocket opened", ws);
+      console.log("WebSocket opened", ws.data);
     },
     message(ws, message) {
       try {
-        const data = JSON.parse(message.toString());
+        console.log("Received message:", message);
+        if (typeof message !== "string") return;
+
+        const data = JSON.parse(message);
         console.log(data);
         switch (data.type) {
           case "join_room":
-            joinRoomHandler(ws, data.roomId, data.token);
+            joinRoomHandler(ws, data.roomId);
             break;
           case "offer":
             offerHandler(data.roomId, data.token, data.sdp);
