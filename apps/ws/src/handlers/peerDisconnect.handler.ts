@@ -10,6 +10,7 @@ export const peerDisconnectHandler = (roomId: string, token: string) => {
     for (const [, peer] of room) {
             peer.send(JSON.stringify({
                 type: "peer-disconnect",
+                from: token
             }));
     }
     if (room.size === 0) {

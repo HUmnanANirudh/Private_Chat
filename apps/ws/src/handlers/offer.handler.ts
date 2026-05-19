@@ -6,13 +6,12 @@ export const offerHandler = (roomId: string, senderToken: string, sdp:RTCSession
     if (!room) {
         return;
     }
-    
     for (const [token, peer] of room) {
         if (token !== senderToken) {
             peer.send(JSON.stringify({
                 type: "offer",
-                roomId,
-                sdp
+                data: sdp,
+                from: senderToken
             }));
         }
     }

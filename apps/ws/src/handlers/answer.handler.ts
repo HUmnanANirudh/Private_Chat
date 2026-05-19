@@ -5,13 +5,13 @@ export const answerHandler = (roomId: string,senderToken: string, sdp:RTCSession
     if (!room) {
         return;
     }
-    
+
     for (const [token, peer] of room) {
         if (token !== senderToken) {
             peer.send(JSON.stringify({
                 type: "answer",
-                roomId,
-                sdp
+                data: sdp,
+                from: senderToken
             }));
         }
     }

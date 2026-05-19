@@ -1,6 +1,6 @@
 import z from "zod";
 
-const createRoom = z.object({
+export const createRoom = z.object({
   ttlminutes: z
     .number()
     .int()
@@ -26,3 +26,31 @@ export const roomValidation = {
   "/room/join": { GET: joinRoom },
   "/room": { GET: getRoomData, DELETE: destroyRoom },
 };
+
+// Component Props Interfaces
+export interface ChatRoomProps {
+  roomId: string;
+}
+
+export interface LobbyProps {
+  roomId?: string;
+  onCreateRoom?: (ttl: number) => void;
+  onJoinRoom?: (roomId: string) => void;
+  JoiningMode?: JoiningMode;
+}
+
+export type JoiningMode = "idle" | "create" | "join";
+
+export interface IdentityCardProps {
+  onCreateRoom: (ttl: number) => void;
+  onJoinRoom: (roomId: string) => void;
+  roomId: string;
+  JoiningMode?: JoiningMode;
+}
+
+export interface RoomActionsProps {
+  oncreateRoom: (ttl: number) => void;
+  onjoinRoom: (roomId: string) => void;
+  JoinMode?: JoiningMode;
+  room?: string;
+}

@@ -45,13 +45,13 @@ const server = Bun.serve<wsData>({
             joinRoomHandler(ws, data.roomId);
             break;
           case "offer":
-            offerHandler(data.roomId, data.token, data.sdp);
+            offerHandler(ws.data.roomId, ws.data.token, data.offer);
             break;
           case "answer":
-            answerHandler(data.roomId, data.token, data.sdp);
+            answerHandler(ws.data.roomId, ws.data.token, data.answer);
             break;
           case "ice-candidate":
-            iceCandidatesHandler(data.roomId, data.token, data.candidate);
+            iceCandidatesHandler(ws.data.roomId, ws.data.token, data.candidate);
             break;
           default:
             console.log("Unknown message type:", data.type);
