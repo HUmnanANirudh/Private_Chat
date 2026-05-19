@@ -54,3 +54,26 @@ export interface RoomActionsProps {
   JoinMode?: JoiningMode;
   room?: string;
 }
+
+// ChatManager state type
+export type ChatManagerState = "idle" | "connecting" | "waiting" | "connecting-to-peer" | "connected" | "disconnected";
+
+// Data channel message types
+export interface TextMessage {
+  type: "text";
+  id: string;
+  content: string;
+  sender: string;
+  timestamp: number;
+}
+
+export interface FileMessage {
+  type: "file";
+  id: string;
+  name: string;
+  size: number;
+  mimeType: string;
+  data: string;
+  sender: string;
+  timestamp: number;
+}

@@ -8,16 +8,35 @@ export const Route = createFileRoute('/')({
 function Home() {
   const navigate = useNavigate()
 
-  const handleCreateRoom = (ttl: number) => {
+  const handleCreateRoom = async (ttl: number) => {
     console.log('Creating room with TTL:', ttl)
-    // TODO: Implement API call
-    // For now, let's just generate a random ID and navigate
-    const roomId = Math.random().toString(36).substring(2, 10)
-    navigate({ to: '/room/$roomId', params: { roomId } })
+    try {
+      const response = await fetch('/api/v1/room/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ttlminutes: ttl }),
+        credentials: 'include',
+      })
+      const data = await response.json()
+      console.log('Room created:', data)
+      navigate({ to: '/room/$roomId', params: { roomId: data.roomId } })
+    } catch (err) {
+      console.error('Failed to create room:', err)
+    }
   }
 
-  const handleJoinRoom = (roomId: string) => {
-    navigate({ to: '/room/$roomId', params: { roomId } })
+  const handleJoinRoom = async (roomId: string) => {
+    console.log('Joining room:', roomId)
+    try {
+      const response = await fetch(`/api/v1/room/join?roomId=${roomId}`, {
+        credentials: 'include',
+      })
+      const data = await response.json()
+      console.log('Joined room:', data)
+      navigate({ to: '/room/$roomId', params: { roomId } })
+    } catch (err) {
+      console.error('Failed to join room:', err)
+    }
   }
 
   return (
