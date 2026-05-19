@@ -3,7 +3,7 @@ import {
   getRoomMeta,
   createRoom,
   destroyRoom,
-  updatedUsers,
+  addParticipant,
 } from "../../../../packages/redis/rooms";
 
 export const getRoomDataController = async (req: Request, res: Response) => {
@@ -140,7 +140,7 @@ export const joinRoomController = async (req: Request, res: Response) => {
       !existingRoom.participants.includes(String(token)) &&
       existingRoom.participants.length < 2
     ) {
-      const updated = await updatedUsers(String(roomId), String(token));
+      const updated = await addParticipant(String(roomId), String(token));
       console.log({ updated });
       return res.status(200).json({
         message: "Joined room successfully",
