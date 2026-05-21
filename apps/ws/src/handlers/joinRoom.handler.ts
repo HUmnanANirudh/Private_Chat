@@ -1,7 +1,7 @@
 import type { ServerWebSocket } from "bun";
 import { registry } from "../registry";
 import type { wsData } from "../types";
-import { getRoomMeta } from "../../../../packages/redis/rooms";
+import { getRoomMeta, addParticipant } from "../../../../packages/redis/rooms";
 
 export const joinRoomHandler = async (ws: ServerWebSocket<wsData>, roomId: string) => {
 
@@ -17,10 +17,20 @@ export const joinRoomHandler = async (ws: ServerWebSocket<wsData>, roomId: strin
     return;
   }
 
-  if (!roomData.participants.includes(token)) {
+  // Auto-enroll token as participant if room has space and token isn't already enrolled
+  let currentParticipants = roomData.participants;
+  if (!roomData.participants.includes(token) && roomData.participants.length < 2) {
+    await addParticipant(roomId, token);
+    // Re-fetch room data after adding participant
+    const updatedRoomData = await getRoomMeta(roomId);
+    currentParticipants = updatedRoomData.participants;
+    console.log("Auto-enrolled token:", token, "participants:", currentParticipants);
+  }
+
+  if (!currentParticipants.includes(token)) {
     ws.send(JSON.stringify({
       type: "error",
-      message: "You are not a participant of this room"
+      message: "Room is full"
     }));
     ws.close();
     return;

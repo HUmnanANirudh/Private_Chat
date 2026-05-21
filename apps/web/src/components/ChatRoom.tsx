@@ -13,54 +13,84 @@ export default function Chat({ roomId }: ChatRoomProps) {
   const [error, setError] = useState<string | null>(null);
   const chatManagerRef = useRef<ReturnType<typeof createChatManager> | null>(null);
 
-  // Get token from cookie (stored when user joined room via API)
-  const getToken = () => {
-    const match = document.cookie.match(/x-auth-value=([^;]+)/);
-    return match ? match[1] : "";
+  // Ensure we have a token by calling the API - this sets the httpOnly cookie
+  const ensureToken = async (): Promise<string> => {
+    // First try to read from URL param (passed during navigation)
+    const urlParams = new URLSearchParams(window.location.search);
+    const urlToken = urlParams.get("token");
+    if (urlToken) {
+      sessionStorage.setItem("token", urlToken);
+      return urlToken;
+    }
+
+    // Fallback: call API to set cookie and get token
+    const res = await fetch(`/api/rooms/join?roomId=${roomId}`, { credentials: "include" });
+    const data = await res.json();
+    if (data.token) {
+      sessionStorage.setItem("token", data.token);
+      return data.token;
+    }
+
+    // If still no token, generate a guest token
+    const guestToken = crypto.randomUUID().slice(0, 16);
+    sessionStorage.setItem("token", guestToken);
+    return guestToken;
   };
 
   useEffect(() => {
-    const token = getToken();
-    if (!token) {
-      setError("No authentication token found");
-      return;
+    let isMounted = true;
+
+    const init = async () => {
+      try {
+        const token = await ensureToken();
+        if (!isMounted) return;
+
+        // Create chat manager
+        const chatManager = createChatManager({
+          onStateChange: (state) => {
+            setChatState(state);
+            console.log("[Chat] State changed to:", state);
+          },
+          onLocalStream: (stream) => {
+            console.log("[Chat] Local stream available");
+            setLocalStream(stream);
+          },
+          onRemoteStream: (stream) => {
+            console.log("[Chat] Remote stream available");
+            setRemoteStream(stream);
+          },
+          onError: (err) => {
+            console.error("[Chat] Error:", err);
+            setError(err);
+          },
+          onPeerDisconnected: () => {
+            console.log("[Chat] Peer disconnected");
+            setRemoteStream(null);
+          },
+        });
+
+        chatManagerRef.current = chatManager;
+
+        // Join room
+        chatManager.joinRoom(roomId, token).catch((err) => {
+          console.error("[Chat] Failed to join room:", err);
+          setError("Failed to join room");
+        });
+
+        // Cleanup on unmount
+        return () => {
+          chatManager.leaveRoom();
+        };
+      } catch (err) {
+        console.error("[Chat] Init error:", err);
+        setError("Failed to initialize");
+      }
     }
 
-    // Create chat manager
-    const chatManager = createChatManager({
-      onStateChange: (state) => {
-        setChatState(state);
-        console.log("[Chat] State changed to:", state);
-      },
-      onLocalStream: (stream) => {
-        console.log("[Chat] Local stream available");
-        setLocalStream(stream);
-      },
-      onRemoteStream: (stream) => {
-        console.log("[Chat] Remote stream available");
-        setRemoteStream(stream);
-      },
-      onError: (err) => {
-        console.error("[Chat] Error:", err);
-        setError(err);
-      },
-      onPeerDisconnected: () => {
-        console.log("[Chat] Peer disconnected");
-        setRemoteStream(null);
-      },
-    });
+    init();
 
-    chatManagerRef.current = chatManager;
-
-    // Join room
-    chatManager.joinRoom(roomId, token).catch((err) => {
-      console.error("[Chat] Failed to join room:", err);
-      setError("Failed to join room");
-    });
-
-    // Cleanup on unmount
     return () => {
-      chatManager.leaveRoom();
+      isMounted = false;
     };
   }, [roomId]);
 

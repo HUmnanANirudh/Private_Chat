@@ -11,8 +11,14 @@ const server = Bun.serve<wsData>({
   port: 9001,
   fetch(req, server) {
     const cookieHeader = req.headers.get("cookie");
-    const match = cookieHeader?.match(/x-auth-value=([^;]+)/);
-    const token = match ? match[1] : "";
+    const cookieMatch = cookieHeader?.match(/x-auth-value=([^;]+)/);
+    const cookieToken = cookieMatch ? cookieMatch[1] : "";
+
+    // Extract token from query params (client passes token via ?token= since cookies aren't sent with WS upgrade)
+    const url = new URL(req.url, "http://localhost");
+    const queryToken = url.searchParams.get("token") || "";
+
+    const token = cookieToken || queryToken;
 
     if (!token) {
       return new Response("Unauthorized", { status: 401 });
