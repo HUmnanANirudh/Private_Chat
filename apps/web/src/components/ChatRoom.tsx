@@ -1,7 +1,7 @@
 import { Paperclip, Phone, Video, Share2 } from "lucide-react";
 import { useEffect, useState, useRef } from "react";
 import type { ChatRoomProps } from "@repo/types";
-import { createChatManager  } from "../services";
+import { createChatManager, type TextMessage } from "../services";
 import type {ChatManagerState} from "../services";
 import { VideoPlayer } from "./VideoPlayer";
 
@@ -11,6 +11,7 @@ export default function Chat({ roomId }: ChatRoomProps) {
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [messages, setMessages] = useState<Array<{ content: string; sender: string }>>([]);
   const chatManagerRef = useRef<ReturnType<typeof createChatManager> | null>(null);
 
   // Ensure we have a token by calling the API - this sets the httpOnly cookie
@@ -24,7 +25,7 @@ export default function Chat({ roomId }: ChatRoomProps) {
     }
 
     // Fallback: call API to set cookie and get token
-    const res = await fetch(`/api/rooms/join?roomId=${roomId}`, { credentials: "include" });
+    const res = await fetch(`/api/v1/room/join?roomId=${roomId}`, { credentials: "include" });
     const data = await res.json();
     if (data.token) {
       sessionStorage.setItem("token", data.token);
@@ -66,6 +67,10 @@ export default function Chat({ roomId }: ChatRoomProps) {
           onPeerDisconnected: () => {
             console.log("[Chat] Peer disconnected");
             setRemoteStream(null);
+          },
+          onTextMessage: (message) => {
+            console.log("[Chat] Received text message:", message.content);
+            setMessages(prev => [...prev, { content: message.content, sender: message.sender }]);
           },
         });
 
@@ -217,6 +222,16 @@ export default function Chat({ roomId }: ChatRoomProps) {
           <div className="h-full min-h-75">
             {renderVideoSection()}
           </div>
+          {messages.length > 0 && (
+            <div className="mt-4 space-y-2">
+              {messages.map((msg, i) => (
+                <div key={i} className="bg-zinc-800 rounded-lg px-3 py-2 text-sm">
+                  <span className="text-zinc-400 text-xs">{msg.sender}: </span>
+                  <span className="text-zinc-100">{msg.content}</span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         <div className="flex flex-col gap-4 p-4 bg-zinc-900/50 backdrop-blur-md border-t border-zinc-800">
@@ -235,8 +250,9 @@ export default function Chat({ roomId }: ChatRoomProps) {
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={(e) => {
-                  if (e.key === "Enter" && input.trim()) {
+                  if (e.key === "Enter" && input.trim() && chatManagerRef.current) {
                     console.log("Sending message:", input);
+                    chatManagerRef.current.sendTextMessage(input, "User");
                     setInput("");
                   }
                 }}
@@ -248,8 +264,9 @@ export default function Chat({ roomId }: ChatRoomProps) {
             <button
               disabled={!input.trim()}
               onClick={() => {
-                if (input.trim().length === 0) return;
+                if (input.trim().length === 0 || !chatManagerRef.current) return;
                 console.log("Sending message:", input);
+                chatManagerRef.current.sendTextMessage(input, "User");
                 setInput("");
               }}
               className={`p-3 rounded-xl font-bold transition-all active:scale-95

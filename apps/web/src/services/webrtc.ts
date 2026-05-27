@@ -147,7 +147,8 @@ export function createWebRTCService(): WebRTCService {
     async initialize() {
       console.log("[WebRTC] Initializing...");
 
-      // 1. Get user media (camera + microphone)
+      // 1. Try to get user media (camera + microphone)
+      // If no media devices available, we can still do signaling-only
       try {
         localStream = await navigator.mediaDevices.getUserMedia({
           video: true,
@@ -155,8 +156,7 @@ export function createWebRTCService(): WebRTCService {
         });
         console.log("[WebRTC] Local stream acquired");
       } catch (err) {
-        console.error("[WebRTC] Failed to get user media:", err);
-        throw err;
+        console.warn("[WebRTC] Failed to get user media, continuing without cam/mic:", err);
       }
 
       // 2. Create RTCPeerConnection with STUN servers
@@ -166,13 +166,17 @@ export function createWebRTCService(): WebRTCService {
 
       console.log("[WebRTC] PeerConnection created");
 
-      // 3. Add local tracks to connection
-      localStream.getTracks().forEach((track) => {
-        if (peerConnection && localStream) {
-          peerConnection.addTrack(track, localStream);
-          console.log(`[WebRTC] Added ${track.kind} track to connection`);
-        }
-      });
+      // 3. Add local tracks to connection only if we have a local stream
+      if (localStream) {
+        localStream.getTracks().forEach((track) => {
+          if (peerConnection && localStream) {
+            peerConnection.addTrack(track, localStream);
+            console.log(`[WebRTC] Added ${track.kind} track to connection`);
+          }
+        });
+      } else {
+        console.log("[WebRTC] No local stream, skipping track addition");
+      }
 
       // 4. Set up ICE candidate handler
       peerConnection.onicecandidate = (event) => {
@@ -185,7 +189,7 @@ export function createWebRTCService(): WebRTCService {
       // 5. Set up connection state handler
       peerConnection.onconnectionstatechange = () => {
         if (peerConnection) {
-          connectionState = peerConnection.connectionState as PeerConnectionState;
+          connectionState = peerConnection.connectionState;
           console.log("[WebRTC] Connection state:", connectionState);
           onConnectionStateChangeCallback?.(connectionState);
         }

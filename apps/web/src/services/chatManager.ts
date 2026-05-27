@@ -59,6 +59,13 @@ export function createChatManager(callbacks: ChatManagerCallbacks): ChatManager 
       console.log("[ChatManager] onAnswer - Received answer, setting remote description...");
       try {
         if (webrtc.peerConnection) {
+          const state = webrtc.peerConnection.signalingState;
+          console.log("[ChatManager] Current signaling state:", state);
+          // If already stable, the answer was already processed via ICE auto-negotiation
+          if (state === "stable") {
+            console.log("[ChatManager] Connection already stable, skipping duplicate answer");
+            return;
+          }
           await webrtc.peerConnection.setRemoteDescription(data.answer);
           console.log("[ChatManager] Remote description set from answer");
         }

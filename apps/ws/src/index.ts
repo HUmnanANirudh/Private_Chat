@@ -59,6 +59,9 @@ const server = Bun.serve<wsData>({
           case "ice-candidate":
             iceCandidatesHandler(ws.data.roomId, ws.data.token, data.candidate);
             break;
+          case "peer-disconnect":
+            peerDisconnectHandler(ws.data.roomId, ws.data.token);
+            break;
           default:
             console.log("Unknown message type:", data.type);
         }
