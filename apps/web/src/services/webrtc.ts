@@ -128,6 +128,14 @@ export function createWebRTCService(): WebRTCService {
     };
 
     dataChannelState = channel.readyState;
+
+    // If channel is already open when we set up handlers, call onopen immediately
+    if (channel.readyState === "open") {
+      console.log("[WebRTC] Data channel already open on setup!");
+      dataChannelState = "open";
+      onDataChannelStateChangeCallback?.("open");
+    }
+
     console.log("[WebRTC] Data channel setup complete, current state:", channel.readyState);
   }
 
@@ -196,8 +204,16 @@ export function createWebRTCService(): WebRTCService {
       peerConnection.onconnectionstatechange = () => {
         if (peerConnection) {
           connectionState = peerConnection.connectionState;
-          console.log("[WebRTC] Connection state:", connectionState);
+          console.log("[WebRTC] >>> Connection state changed to:", connectionState);
           onConnectionStateChangeCallback?.(connectionState);
+        }
+      };
+
+      // 6. Set up ICE connection state handler (more reliable for data channel)
+      peerConnection.oniceconnectionstatechange = () => {
+        console.log("[WebRTC] ICE connection state:", peerConnection?.iceConnectionState);
+        if (peerConnection?.iceConnectionState === "connected" || peerConnection?.iceConnectionState === "completed") {
+          console.log("[WebRTC] ICE connected! Data channel should open soon...");
         }
       };
 
@@ -210,10 +226,10 @@ export function createWebRTCService(): WebRTCService {
 
       // 7. Set up data channel handler (for receiving)
       peerConnection.ondatachannel = (event) => {
-        console.log("[WebRTC] Data channel received:", event.channel.label);
+        console.log("[WebRTC] Data channel RECEIVED from peer:", event.channel.label, "state:", event.channel.readyState);
         dataChannel = event.channel;
         setupDataChannel(dataChannel);
-        console.log("[WebRTC] Data channel readyState:", dataChannel.readyState);
+        console.log("[WebRTC] After setupDataChannel, dataChannel state:", dataChannel.readyState);
       };
     },
 

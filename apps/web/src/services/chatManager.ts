@@ -1,8 +1,7 @@
-// ChatManager - Orchestrates WebRTC and Signaling services
-// Handles the complete WebRTC chat flow
-
-import { createWebRTCService, type WebRTCService, type TextMessage, type FileMessage } from "./webrtc";
-import { createSignalingService, type SignalingService } from "./signaling";
+import { createWebRTCService } from "./webrtc";
+import type { WebRTCService, TextMessage, FileMessage } from "./webrtc";
+import { createSignalingService } from "./signaling";
+import type { SignalingService } from "./signaling";
 
 export type ChatManagerState = "idle" | "connecting" | "waiting" | "connecting-to-peer" | "connected" | "disconnected";
 
@@ -42,6 +41,7 @@ export function createChatManager(callbacks: ChatManagerCallbacks): ChatManager 
     },
     onOffer: async (data) => {
       console.log("[ChatManager] onOffer - Received offer, creating answer...");
+      hasReceivedOffer = true; // Mark that we received an offer
       // Non-initiator receives offer and creates answer
       try {
         await webrtc.createAnswer(data.offer);
@@ -56,16 +56,18 @@ export function createChatManager(callbacks: ChatManagerCallbacks): ChatManager 
       }
     },
     onAnswer: async (data) => {
-      console.log("[ChatManager] onAnswer - Received answer, setting remote description...");
+      console.log("[ChatManager] onAnswer - Received answer, hasReceivedOffer:", hasReceivedOffer);
       try {
         if (webrtc.peerConnection) {
-          const state = webrtc.peerConnection.signalingState;
-          console.log("[ChatManager] Current signaling state:", state);
-          // If already stable, the answer was already processed via ICE auto-negotiation
-          if (state === "stable") {
-            console.log("[ChatManager] Connection already stable, skipping duplicate answer");
+          // If hasReceivedOffer is true, we are the answer-creator (Peer B)
+          // We've already set remote description when we called createAnswer(offer)
+          // The answer from Peer A is meant for Peer A, not for us
+          if (hasReceivedOffer) {
+            console.log("[ChatManager] We are answer-creator, ignoring answer from offer-creator");
             return;
           }
+          // We are the offer-creator (Peer A), we need to process the answer
+          console.log("[ChatManager] We are offer-creator, setting remote description from answer");
           await webrtc.peerConnection.setRemoteDescription(data.answer);
           console.log("[ChatManager] Remote description set from answer");
         }
@@ -95,6 +97,7 @@ export function createChatManager(callbacks: ChatManagerCallbacks): ChatManager 
   let state: ChatManagerState = "idle";
   let currentRoomId: string | null = null;
   let currentToken: string | null = null;
+  let hasReceivedOffer = false;
 
   const setState = (newState: ChatManagerState) => {
     console.log(`[ChatManager] State: ${state} -> ${newState}`);
@@ -140,13 +143,13 @@ export function createChatManager(callbacks: ChatManagerCallbacks): ChatManager 
     if (message.type === "text") {
       console.log("[ChatManager] Forwarding text message to UI:", message.content);
       callbacks.onTextMessage?.(message);
-    } else if (message.type === "file") {
+    } else {
       callbacks.onFileMessage?.(message);
     }
   };
 
-  webrtc.onDataChannelStateChange = (state) => {
-    console.log("[ChatManager] Data channel state changed:", state);
+  webrtc.onDataChannelStateChange = (dataChannelState) => {
+    console.log("[ChatManager] Data channel state changed:", dataChannelState);
   };
 
   return {
