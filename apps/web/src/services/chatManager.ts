@@ -136,12 +136,17 @@ export function createChatManager(callbacks: ChatManagerCallbacks): ChatManager 
 
   // Set up data channel message handler
   webrtc.onDataChannelMessage = (message) => {
-    console.log("[ChatManager] Data channel message received:", message.type);
+    console.log("[ChatManager] Data channel message received:", message);
     if (message.type === "text") {
+      console.log("[ChatManager] Forwarding text message to UI:", message.content);
       callbacks.onTextMessage?.(message);
     } else if (message.type === "file") {
       callbacks.onFileMessage?.(message);
     }
+  };
+
+  webrtc.onDataChannelStateChange = (state) => {
+    console.log("[ChatManager] Data channel state changed:", state);
   };
 
   return {

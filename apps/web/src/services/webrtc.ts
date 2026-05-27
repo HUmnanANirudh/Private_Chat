@@ -94,11 +94,14 @@ export function createWebRTCService(): WebRTCService {
 
   // Helper to set up data channel event handlers
   function setupDataChannel(channel: RTCDataChannel) {
-    console.log("[WebRTC] Setting up data channel:", channel.label);
+    console.log("[WebRTC] Setting up data channel:", channel.label, "readyState:", channel.readyState);
+
+    // Set initial state
+    dataChannelState = channel.readyState === "open" ? "open" : "connecting";
 
     channel.onopen = () => {
       dataChannelState = "open";
-      console.log("[WebRTC] Data channel opened");
+      console.log("[WebRTC] Data channel OPENED!");
       onDataChannelStateChangeCallback?.("open");
     };
 
@@ -109,9 +112,10 @@ export function createWebRTCService(): WebRTCService {
     };
 
     channel.onmessage = (event) => {
-      console.log("[WebRTC] Data channel message received");
+      console.log("[WebRTC] Data channel onmessage received, data:", event.data);
       try {
         const message = JSON.parse(event.data) as DataChannelMessage;
+        console.log("[WebRTC] Parsed message:", message);
         onDataChannelMessageCallback?.(message);
       } catch (err) {
         console.error("[WebRTC] Failed to parse data channel message:", err);
@@ -120,9 +124,11 @@ export function createWebRTCService(): WebRTCService {
 
     channel.onerror = (error) => {
       console.error("[WebRTC] Data channel error:", error);
+      dataChannelState = "error";
     };
 
     dataChannelState = channel.readyState;
+    console.log("[WebRTC] Data channel setup complete, current state:", channel.readyState);
   }
 
   return {
@@ -207,6 +213,7 @@ export function createWebRTCService(): WebRTCService {
         console.log("[WebRTC] Data channel received:", event.channel.label);
         dataChannel = event.channel;
         setupDataChannel(dataChannel);
+        console.log("[WebRTC] Data channel readyState:", dataChannel.readyState);
       };
     },
 
@@ -334,9 +341,29 @@ export function createWebRTCService(): WebRTCService {
     },
 
     sendTextMessage(content: string, sender: string) {
-      if (!dataChannel || dataChannel.readyState !== "open") {
-        console.error("[WebRTC] Data channel not ready for text message");
+      if (!dataChannel) {
+        console.error("[WebRTC] Data channel not initialized");
         return false;
+      }
+      if (dataChannel.readyState !== "open") {
+        console.warn("[WebRTC] Data channel not open yet, state:", dataChannel.readyState);
+        // Queue or store message temporarily?
+        // For now, let's try anyway
+        try {
+          const message: TextMessage = {
+            type: "text",
+            id: crypto.randomUUID(),
+            content,
+            sender,
+            timestamp: Date.now(),
+          };
+          dataChannel.send(JSON.stringify(message));
+          console.log("[WebRTC] Sent text message:", content);
+          return true;
+        } catch (e) {
+          console.error("[WebRTC] Failed to send via data channel:", e);
+          return false;
+        }
       }
 
       const message: TextMessage = {
