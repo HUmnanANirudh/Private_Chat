@@ -13,6 +13,7 @@ export interface ChatManagerCallbacks {
   onPeerDisconnected?: () => void;
   onTextMessage?: (message: TextMessage) => void;
   onFileMessage?: (message: FileMessage) => void;
+  onDataChannelOpen?: () => void;
 }
 
 export interface ChatManager {
@@ -150,6 +151,9 @@ export function createChatManager(callbacks: ChatManagerCallbacks): ChatManager 
 
   webrtc.onDataChannelStateChange = (dataChannelState) => {
     console.log("[ChatManager] Data channel state changed:", dataChannelState);
+    if (dataChannelState === "open") {
+      callbacks.onDataChannelOpen?.();
+    }
   };
 
   return {

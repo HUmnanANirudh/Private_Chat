@@ -4,7 +4,6 @@ import { useNavigate } from "@tanstack/react-router";
 import type { ChatRoomProps } from "@repo/types";
 import { createChatManager } from "../services";
 import type { ChatManagerState } from "../services";
-import { VideoPlayer } from "./VideoPlayer";
 
 interface Message {
   id: string;
@@ -20,10 +19,11 @@ export default function Chat({ roomId }: ChatRoomProps) {
   const [chatState, setChatState] = useState<ChatManagerState>("idle");
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
-  const [_error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [isChatOpen, setIsChatOpen] = useState(true);
-  const [isConnected, setIsConnected] = useState(false);
+  const [dataChannelReady, setDataChannelReady] = useState(false);
+  const pendingMessagesRef = useRef<string[]>([]);
   const chatManagerRef = useRef<ReturnType<typeof createChatManager> | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -34,6 +34,17 @@ export default function Chat({ roomId }: ChatRoomProps) {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  // Flush pending messages when data channel becomes ready
+  useEffect(() => {
+    if (dataChannelReady && pendingMessagesRef.current.length > 0) {
+      console.log("[Chat] Flushing", pendingMessagesRef.current.length, "pending messages");
+      pendingMessagesRef.current.forEach((content) => {
+        chatManagerRef.current?.sendTextMessage(content, "You");
+      });
+      pendingMessagesRef.current = [];
+    }
+  }, [dataChannelReady]);
 
   const ensureToken = async (): Promise<string> => {
     const urlParams = new URLSearchParams(window.location.search);
@@ -84,7 +95,7 @@ export default function Chat({ roomId }: ChatRoomProps) {
           onStateChange: (state) => {
             setChatState(state);
             if (state === "connected") {
-              setIsConnected(true);
+              setDataChannelReady(true);
             }
             if (state === "disconnected" || state === "idle") {
               navigate({ to: "/" });
@@ -96,6 +107,11 @@ export default function Chat({ roomId }: ChatRoomProps) {
           onPeerDisconnected: () => {
             setRemoteStream(null);
             setChatState("disconnected");
+            setDataChannelReady(false);
+          },
+          onDataChannelOpen: () => {
+            console.log("[Chat] Data channel open!");
+            setDataChannelReady(true);
           },
           onTextMessage: (message) => {
             setMessages((prev) => [
@@ -141,12 +157,11 @@ export default function Chat({ roomId }: ChatRoomProps) {
     if (!input.trim() || !chatManagerRef.current) return;
     const content = input.trim();
 
-    // Add to UI immediately (WebRTC may buffer if channel not ready yet)
-    const msgId = crypto.randomUUID();
+    // Add to UI immediately
     setMessages((prev) => [
       ...prev,
       {
-        id: msgId,
+        id: crypto.randomUUID(),
         content,
         sender: "You",
         timestamp: Date.now(),
@@ -155,8 +170,12 @@ export default function Chat({ roomId }: ChatRoomProps) {
     ]);
     setInput("");
 
-    // Try to send via WebRTC
-    chatManagerRef.current.sendTextMessage(content, "You");
+    // Try to send via WebRTC if ready, otherwise queue
+    const sent = chatManagerRef.current.sendTextMessage(content, "You");
+    if (!sent) {
+      console.log("[Chat] Data channel not ready, queueing message");
+      pendingMessagesRef.current.push(content);
+    }
   };
 
   return (
@@ -164,9 +183,9 @@ export default function Chat({ roomId }: ChatRoomProps) {
       {/* Main Chat Area */}
       <div className="flex-1 flex flex-col">
         {/* Header */}
-        <header className="flex items-center justify-between gap-4 px-6 py-4 bg-zinc-900/80 backdrop-blur-md border-b border-zinc-800">
+        <header className="flex items-center justify-between gap-4 shrink-0 px-6 py-4 bg-zinc-900/80 backdrop-blur-md border-b border-zinc-800">
           <div className="flex items-center gap-4">
-            <div className="w-10 h-10 rounded-full bg-linear-to-br from-violet-500 to-fuchsia-500 flex items-center justify-center font-bold text-white text-sm">
+            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-violet-500 to-fuchsia-500 flex items-center justify-center font-bold text-white text-sm">
               {roomId.slice(0, 2).toUpperCase()}
             </div>
             <div>
@@ -174,8 +193,8 @@ export default function Chat({ roomId }: ChatRoomProps) {
               <div className="flex items-center gap-2">
                 <span className="text-xs text-zinc-500 font-mono">{roomId}</span>
                 <span className="text-xs text-zinc-600">•</span>
-                <span className={`text-xs ${isConnected ? "text-green-500" : "text-zinc-500"}`}>
-                  {isConnected ? "Connected" : "Connecting..."}
+                <span className={`text-xs ${dataChannelReady ? "text-green-500" : "text-zinc-500"}`}>
+                  {dataChannelReady ? "Connected" : "Connecting..."}
                 </span>
               </div>
             </div>
@@ -246,7 +265,7 @@ export default function Chat({ roomId }: ChatRoomProps) {
         </main>
 
         {/* Message Input */}
-        <div className="px-6 py-4 bg-zinc-900/80 border-t border-zinc-800">
+        <div className="shrink-0 px-6 py-4 bg-zinc-900/80 border-t border-zinc-800">
           <div className="flex items-center gap-3">
             <button
               className="p-3 bg-zinc-800 hover:bg-zinc-700 rounded-xl transition-colors"
@@ -279,7 +298,7 @@ export default function Chat({ roomId }: ChatRoomProps) {
 
       {/* Chat Sidebar */}
       {isChatOpen && (
-        <aside className="w-80 bg-zinc-900 border-l border-zinc-800 flex flex-col">
+        <aside className="w-80 bg-zinc-900 border-l border-zinc-800 flex flex-col shrink-0">
           <div className="p-4 border-b border-zinc-800">
             <h2 className="font-semibold text-sm">Messages</h2>
           </div>
@@ -306,7 +325,7 @@ export default function Chat({ roomId }: ChatRoomProps) {
                       {!msg.isOwn && (
                         <p className="text-xs text-zinc-400 mb-1 font-medium">{msg.sender}</p>
                       )}
-                      <p className="wrap-break-word">{msg.content}</p>
+                      <p className="break-words">{msg.content}</p>
                     </div>
                     <span className="text-[10px] text-zinc-600 mt-1 px-1">
                       {new Date(msg.timestamp).toLocaleTimeString([], {

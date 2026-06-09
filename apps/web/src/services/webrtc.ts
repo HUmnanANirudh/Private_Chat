@@ -363,23 +363,7 @@ export function createWebRTCService(): WebRTCService {
       }
       if (dataChannel.readyState !== "open") {
         console.warn("[WebRTC] Data channel not open yet, state:", dataChannel.readyState);
-        // Queue or store message temporarily?
-        // For now, let's try anyway
-        try {
-          const message: TextMessage = {
-            type: "text",
-            id: crypto.randomUUID(),
-            content,
-            sender,
-            timestamp: Date.now(),
-          };
-          dataChannel.send(JSON.stringify(message));
-          console.log("[WebRTC] Sent text message:", content);
-          return true;
-        } catch (e) {
-          console.error("[WebRTC] Failed to send via data channel:", e);
-          return false;
-        }
+        return false;
       }
 
       const message: TextMessage = {
