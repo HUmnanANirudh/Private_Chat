@@ -122,7 +122,7 @@ export const destroyRoomController = async (req: Request, res: Response) => {
 
 export const joinRoomController = async (req: Request, res: Response) => {
   try {
-    const roomId = req.query.roomId;
+    const roomId = req.body.roomId;
     const token = req.participantToken;
     console.log({ roomId, token });
     if (!roomId) {
