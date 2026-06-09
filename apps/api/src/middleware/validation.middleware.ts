@@ -16,7 +16,9 @@ export const validationMiddleware = async (
     const reqMethod = req.method.toUpperCase();
     const method = reqMethod as validationFunction;
 
-    console.log(`Validating request for ${path} with method ${method}`);
+    console.log(
+      `Validating request for ${String(path)} with method ${String(method)}`,
+    );
 
     if (!validation[path] || !validation[path][method]) {
       res
@@ -57,8 +59,7 @@ export const validationMiddleware = async (
     }
 
     next();
-  } catch (err:Error | any) {
-
+  } catch (err: Error | any) {
     console.error("Error in validation middleware:", err);
     return res.status(500).json({
       message: "Validation error middleware error",
