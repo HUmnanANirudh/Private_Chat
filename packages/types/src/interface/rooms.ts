@@ -9,7 +9,9 @@ export interface LobbyProps {
   JoiningMode?: JoiningMode;
 }
 
-export type JoiningMode = "idle" | "create" | "join";
+export interface JoiningMode {
+  type: "idle" | "create" | "join";
+}
 
 export interface IdentityCardProps {
   onCreateRoom: (ttl: number) => void;
@@ -25,10 +27,10 @@ export interface RoomActionsProps {
   room?: string;
 }
 
-// ChatManager state type
-export type ChatManagerState = "idle" | "connecting" | "waiting" | "connecting-to-peer" | "connected" | "disconnected";
+export interface ChatManagerState {
+  type: "idle" | "connecting" | "waiting" | "connecting-to-peer" | "connected" | "disconnected";
+}
 
-// Data channel message types
 export interface TextMessage {
   type: "text";
   id: string;
