@@ -69,7 +69,7 @@ export interface WebRTCService {
   getRemoteStream: () => MediaStream | null;
 
   // Media controls
-  startMedia: () => Promise<void>;
+  startMedia: (options?: MediaStreamConstraints) => Promise<void>;
   muteAudio: () => void;
   unmuteAudio: () => void;
   toggleVideo: () => void;
@@ -89,6 +89,7 @@ export interface WebRTCService {
   onDataChannelMessage: ((message: DataChannelMessage) => void) | null;
   onDataChannelStateChange: ((state: string) => void) | null;
   onNegotiationNeeded: (() => void) | null;
+  resetConnection: () => void;
 }
 
 export function createWebRTCService(): WebRTCService {
@@ -223,8 +224,14 @@ export function createWebRTCService(): WebRTCService {
       peerConnection = new RTCPeerConnection({
         iceServers: ICE_SERVERS,
       });
-
       console.log("[WebRTC] PeerConnection created");
+
+      // Add existing local stream tracks if present
+      if (localStream) {
+        localStream.getTracks().forEach((track) => {
+          peerConnection?.addTrack(track, localStream!);
+        });
+      }
 
       peerConnection.onnegotiationneeded = () => {
         console.log("[WebRTC] Negotiation needed");
@@ -362,20 +369,26 @@ export function createWebRTCService(): WebRTCService {
       return remoteStream;
     },
 
-    async startMedia() {
+    async startMedia(options: MediaStreamConstraints = { video: true, audio: true }) {
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: true,
-          audio: true,
-        });
-        localStream = stream;
+        const stream = await navigator.mediaDevices.getUserMedia(options);
         
+        if (!localStream) {
+          localStream = stream;
+        } else {
+          stream.getTracks().forEach(track => localStream!.addTrack(track));
+        }
+
         stream.getTracks().forEach((track) => {
           if (peerConnection) {
-            peerConnection.addTrack(track, stream);
+            peerConnection.addTrack(track, localStream!);
           }
         });
-        console.log("[WebRTC] Media started and tracks added");
+        
+        if (options.audio) audioMuted = false;
+        if (options.video) videoEnabled = true;
+
+        console.log("[WebRTC] Media started and tracks added", options);
       } catch (err) {
         console.error("[WebRTC] Failed to get user media:", err);
       }
@@ -498,6 +511,20 @@ export function createWebRTCService(): WebRTCService {
         reader.onerror = () => resolve(false);
         reader.readAsDataURL(file);
       });
+    },
+
+    resetConnection() {
+      console.log("[WebRTC] Resetting connection...");
+      if (dataChannel) {
+        dataChannel.close();
+        dataChannel = null;
+      }
+      if (peerConnection) {
+        peerConnection.close();
+        peerConnection = null;
+      }
+      remoteStream = null;
+      onRemoteStreamCallback?.(new MediaStream()); // Clear remote video
     },
   };
 

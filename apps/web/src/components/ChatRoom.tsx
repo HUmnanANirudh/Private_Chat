@@ -34,6 +34,7 @@ export default function Chat({ roomId }: ChatRoomProps) {
   const [timeRemaining, setTimeRemaining] = useState<number | null>(null);
   const [showDestroyModal, setShowDestroyModal] = useState(false);
   const [countdown, setCountdown] = useState(3);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const pendingMessagesRef = useRef<string[]>([]);
@@ -41,6 +42,14 @@ export default function Chat({ roomId }: ChatRoomProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   
   const showModalRef = useRef(false);
+  const isChatOpenRef = useRef(isChatOpen);
+
+  useEffect(() => {
+    isChatOpenRef.current = isChatOpen;
+    if (isChatOpen) {
+      setUnreadCount(0);
+    }
+  }, [isChatOpen]);
 
   // Timer effect
   useEffect(() => {
@@ -213,6 +222,9 @@ export default function Chat({ roomId }: ChatRoomProps) {
                 isOwn: false,
               },
             ]);
+            if (!isChatOpenRef.current) {
+              setUnreadCount(prev => prev + 1);
+            }
           },
           onFileMessage: (message) => {
             setMessages((prev) => [
@@ -229,6 +241,9 @@ export default function Chat({ roomId }: ChatRoomProps) {
                 mimeType: message.mimeType
               },
             ]);
+            if (!isChatOpenRef.current) {
+              setUnreadCount(prev => prev + 1);
+            }
           },
         });
 
@@ -274,23 +289,32 @@ export default function Chat({ roomId }: ChatRoomProps) {
     }
   };
 
-  const handleStartCall = async () => {
+  const handleStartCall = async (options: MediaStreamConstraints) => {
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
       alert("Your browser blocks camera access. You must use HTTPS or localhost to use video and audio.");
       return;
     }
     if (chatManagerRef.current) {
-      await chatManagerRef.current.startMedia();
+      await chatManagerRef.current.startMedia(options);
+    }
+  };
+
+  const handleToggleVideo = async () => {
+    if (!localStream || localStream.getVideoTracks().length === 0) {
+      await handleStartCall({ video: true, audio: false });
+      setIsVideoEnabled(true);
+      return;
+    }
+    if (chatManagerRef.current) {
+      chatManagerRef.current.toggleVideo();
+      setIsVideoEnabled(!isVideoEnabled);
     }
   };
 
   const handleToggleAudio = async () => {
-    if (!localStream) {
-      await handleStartCall();
-      if (chatManagerRef.current) {
-        chatManagerRef.current.toggleVideo(); // Turn off video since they only asked for audio
-        setIsVideoEnabled(false);
-      }
+    if (!localStream || localStream.getAudioTracks().length === 0) {
+      await handleStartCall({ video: false, audio: true });
+      setIsAudioMuted(false);
       return;
     }
     if (chatManagerRef.current) {
@@ -300,20 +324,7 @@ export default function Chat({ roomId }: ChatRoomProps) {
     }
   };
 
-  const handleToggleVideo = async () => {
-    if (!localStream) {
-      await handleStartCall();
-      if (chatManagerRef.current) {
-        chatManagerRef.current.muteAudio(); // Turn off audio since they only asked for video
-        setIsAudioMuted(true);
-      }
-      return;
-    }
-    if (chatManagerRef.current) {
-      chatManagerRef.current.toggleVideo();
-      setIsVideoEnabled(!isVideoEnabled);
-    }
-  };
+
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -498,9 +509,14 @@ export default function Chat({ roomId }: ChatRoomProps) {
             <button
               onClick={() => setIsChatOpen(!isChatOpen)}
               title="Toggle chat panel"
-              className={`p-3 rounded-full transition-colors ${isChatOpen ? 'bg-white text-black shadow-lg' : 'bg-zinc-900 hover:bg-zinc-800 text-zinc-300'}`}
+              className={`relative p-3 rounded-full transition-colors ${isChatOpen ? 'bg-white text-black shadow-lg' : 'bg-zinc-900 hover:bg-zinc-800 text-zinc-300'}`}
             >
               <MessageSquare size={20} />
+              {unreadCount > 0 && !isChatOpen && (
+                <span className="absolute top-0 right-0 transform translate-x-1 -translate-y-1 bg-red-500 text-white text-[10px] font-bold w-5 h-5 flex items-center justify-center rounded-full shadow-md border-2 border-zinc-950">
+                  {unreadCount}
+                </span>
+              )}
             </button>
           </div>
         </div>

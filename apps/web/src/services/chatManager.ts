@@ -25,7 +25,7 @@ export interface ChatManager {
   leaveRoom: () => void;
   sendTextMessage: (content: string, sender: string) => boolean;
   sendFile: (file: File, sender: string) => Promise<boolean>;
-  startMedia: () => Promise<void>;
+  startMedia: (options?: MediaStreamConstraints) => Promise<void>;
   muteAudio: () => void;
   unmuteAudio: () => void;
   toggleVideo: () => void;
@@ -36,8 +36,15 @@ export interface ChatManager {
 export function createChatManager(callbacks: ChatManagerCallbacks): ChatManager {
   const webrtc = createWebRTCService();
   const signaling = createSignalingService({
-    onReady: (isInitiator) => {
+    onReady: async (isInitiator) => {
       console.log("[ChatManager] onReady - Both peers joined, starting WebRTC...", isInitiator ? "as initiator" : "as receiver");
+      
+      // Ensure we have a fresh connection if we were in a failed/waiting state from a previous peer
+      if (state === "disconnected" || state === "waiting") {
+        webrtc.resetConnection();
+        await webrtc.initialize();
+      }
+
       // If we're the first to join (initiator), create the offer
       if (isInitiator) {
         startConnection();
@@ -80,8 +87,11 @@ export function createChatManager(callbacks: ChatManagerCallbacks): ChatManager 
         console.error("[ChatManager] Error adding ICE candidate:", err);
       }
     },
-    onPeerDisconnected: () => {
-      console.log("[ChatManager] Peer disconnected");
+    onPeerDisconnected: async () => {
+      console.log("[ChatManager] Peer disconnected, resetting WebRTC...");
+      webrtc.resetConnection();
+      setState("waiting");
+      await webrtc.initialize();
       callbacks.onPeerDisconnected?.();
     },
     onError: (error) => {
@@ -237,8 +247,8 @@ export function createChatManager(callbacks: ChatManagerCallbacks): ChatManager 
       return await webrtc.sendFile(file, sender);
     },
 
-    async startMedia() {
-      await webrtc.startMedia();
+    async startMedia(options?: MediaStreamConstraints) {
+      await webrtc.startMedia(options);
       const localStream = webrtc.getLocalStream();
       if (localStream) {
         callbacks.onLocalStream?.(localStream);
