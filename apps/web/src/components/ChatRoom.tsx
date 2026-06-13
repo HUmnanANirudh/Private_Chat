@@ -143,11 +143,6 @@ export default function Chat({ roomId }: ChatRoomProps) {
     navigate({ to: "/" });
   };
 
-  const leaveRoom = () => {
-    chatManagerRef.current?.leaveRoom();
-    navigate({ to: "/" });
-  };
-
   useEffect(() => {
     let isMounted = true;
 
@@ -357,9 +352,6 @@ export default function Chat({ roomId }: ChatRoomProps) {
         <div className="flex items-center gap-2 sm:gap-3">
           <button onClick={handleCopy} title="Share room link" className="p-2 sm:p-3 rounded-full bg-zinc-900 hover:bg-zinc-800 text-zinc-300 transition-colors shadow-lg border border-zinc-800">
             <Share2 size={18} />
-          </button>
-          <button onClick={leaveRoom} title="Leave room" className="p-2 sm:p-3 rounded-full bg-zinc-900 hover:bg-zinc-800 text-zinc-300 transition-colors shadow-lg border border-zinc-800">
-            <PhoneOff size={18} />
           </button>
           <button onClick={destroyRoom} title="Destroy room for everyone" className="p-2 sm:p-3 rounded-full bg-red-950/50 hover:bg-red-900/80 border border-red-900/50 text-red-300 shadow-lg transition-colors">
             <Trash2 size={18} />
