@@ -25,6 +25,7 @@ export interface ChatManager {
   leaveRoom: () => void;
   sendTextMessage: (content: string, sender: string) => boolean;
   sendFile: (file: File, sender: string) => boolean;
+  startMedia: () => Promise<void>;
   muteAudio: () => void;
   unmuteAudio: () => void;
   toggleVideo: () => void;
@@ -35,15 +36,15 @@ export interface ChatManager {
 export function createChatManager(callbacks: ChatManagerCallbacks): ChatManager {
   const webrtc = createWebRTCService();
   const signaling = createSignalingService({
-    onReady: () => {
-      console.log("[ChatManager] onReady - Both peers joined, starting WebRTC...");
+    onReady: (isInitiator) => {
+      console.log("[ChatManager] onReady - Both peers joined, starting WebRTC...", isInitiator ? "as initiator" : "as receiver");
       // If we're the first to join (initiator), create the offer
-      startConnection();
+      if (isInitiator) {
+        startConnection();
+      }
     },
     onOffer: async (data) => {
       console.log("[ChatManager] onOffer - Received offer, creating answer...");
-      hasReceivedOffer = true; // Mark that we received an offer
-      // Non-initiator receives offer and creates answer
       try {
         await webrtc.createAnswer(data.offer);
         const answer = webrtc.peerConnection?.localDescription;
@@ -57,20 +58,14 @@ export function createChatManager(callbacks: ChatManagerCallbacks): ChatManager 
       }
     },
     onAnswer: async (data) => {
-      console.log("[ChatManager] onAnswer - Received answer, hasReceivedOffer:", hasReceivedOffer);
+      console.log("[ChatManager] onAnswer - Received answer");
       try {
-        if (webrtc.peerConnection) {
-          // If hasReceivedOffer is true, we are the answer-creator (Peer B)
-          // We've already set remote description when we called createAnswer(offer)
-          // The answer from Peer A is meant for Peer A, not for us
-          if (hasReceivedOffer) {
-            console.log("[ChatManager] We are answer-creator, ignoring answer from offer-creator");
-            return;
-          }
-          // We are the offer-creator (Peer A), we need to process the answer
+        if (webrtc.peerConnection?.signalingState === "have-local-offer") {
           console.log("[ChatManager] We are offer-creator, setting remote description from answer");
           await webrtc.peerConnection.setRemoteDescription(data.answer);
           console.log("[ChatManager] Remote description set from answer");
+        } else {
+          console.log("[ChatManager] Ignoring answer, signalingState is", webrtc.peerConnection?.signalingState);
         }
       } catch (err) {
         console.error("[ChatManager] Error setting remote description:", err);
@@ -98,7 +93,6 @@ export function createChatManager(callbacks: ChatManagerCallbacks): ChatManager 
   let state: ChatManagerState = "idle";
   let currentRoomId: string | null = null;
   let currentToken: string | null = null;
-  let hasReceivedOffer = false;
 
   const setState = (newState: ChatManagerState) => {
     console.log(`[ChatManager] State: ${state} -> ${newState}`);
@@ -107,7 +101,9 @@ export function createChatManager(callbacks: ChatManagerCallbacks): ChatManager 
   };
 
   const startConnection = async () => {
-    setState("connecting-to-peer");
+    if (state !== "connected") {
+      setState("connecting-to-peer");
+    }
     try {
       const offer = await webrtc.createOffer();
       signaling.sendOffer(offer, ""); // "" means send to the other peer
@@ -136,6 +132,13 @@ export function createChatManager(callbacks: ChatManagerCallbacks): ChatManager 
   webrtc.onRemoteStream = (stream) => {
     console.log("[ChatManager] Remote stream received");
     callbacks.onRemoteStream?.(stream);
+  };
+
+  webrtc.onNegotiationNeeded = async () => {
+    if (state === "connected") {
+      console.log("[ChatManager] Renegotiating connection...");
+      await startConnection();
+    }
   };
 
   // Set up data channel message handler
@@ -206,6 +209,14 @@ export function createChatManager(callbacks: ChatManagerCallbacks): ChatManager 
 
     sendFile(file: File, sender: string) {
       return webrtc.sendFile(file, sender);
+    },
+
+    async startMedia() {
+      await webrtc.startMedia();
+      const localStream = webrtc.getLocalStream();
+      if (localStream) {
+        callbacks.onLocalStream?.(localStream);
+      }
     },
 
     muteAudio() {

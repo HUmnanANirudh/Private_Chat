@@ -31,7 +31,20 @@ export interface FileMessage {
   timestamp: number;
 }
 
-export type DataChannelMessage = TextMessage | FileMessage;
+export interface FileChunkMessage {
+  type: "file-chunk";
+  id: string;
+  chunkIndex: number;
+  totalChunks: number;
+  data: string;
+  name: string;
+  size: number;
+  mimeType: string;
+  sender: string;
+  timestamp: number;
+}
+
+export type DataChannelMessage = TextMessage | FileMessage | FileChunkMessage;
 
 export interface WebRTCService {
   // Connection state
@@ -56,6 +69,7 @@ export interface WebRTCService {
   getRemoteStream: () => MediaStream | null;
 
   // Media controls
+  startMedia: () => Promise<void>;
   muteAudio: () => void;
   unmuteAudio: () => void;
   toggleVideo: () => void;
@@ -73,6 +87,7 @@ export interface WebRTCService {
   onConnectionStateChange: ((state: PeerConnectionState) => void) | null;
   onDataChannelMessage: ((message: DataChannelMessage) => void) | null;
   onDataChannelStateChange: ((state: string) => void) | null;
+  onNegotiationNeeded: (() => void) | null;
 }
 
 export function createWebRTCService(): WebRTCService {
@@ -91,6 +106,9 @@ export function createWebRTCService(): WebRTCService {
   let onConnectionStateChangeCallback: ((state: PeerConnectionState) => void) | null = null;
   let onDataChannelMessageCallback: ((message: DataChannelMessage) => void) | null = null;
   let onDataChannelStateChangeCallback: ((state: string) => void) | null = null;
+  let onNegotiationNeededCallback: (() => void) | null = null;
+  
+  const fileBuffers = new Map<string, string[]>();
 
   // Helper to set up data channel event handlers
   function setupDataChannel(channel: RTCDataChannel) {
@@ -112,11 +130,46 @@ export function createWebRTCService(): WebRTCService {
     };
 
     channel.onmessage = (event) => {
-      console.log("[WebRTC] Data channel onmessage received, data:", event.data);
+      console.log("[WebRTC] Data channel message received");
       try {
-        const message = JSON.parse(event.data) as DataChannelMessage;
-        console.log("[WebRTC] Parsed message:", message);
-        onDataChannelMessageCallback?.(message);
+        const message = JSON.parse(event.data);
+        
+        if (message.type === "file-chunk") {
+          const chunkMsg = message as FileChunkMessage;
+          if (!fileBuffers.has(chunkMsg.id)) {
+            fileBuffers.set(chunkMsg.id, new Array(chunkMsg.totalChunks));
+          }
+          const buffer = fileBuffers.get(chunkMsg.id)!;
+          buffer[chunkMsg.chunkIndex] = chunkMsg.data;
+
+          // Check if complete
+          let complete = true;
+          for (let i = 0; i < chunkMsg.totalChunks; i++) {
+            if (buffer[i] === undefined) { 
+              complete = false; 
+              break; 
+            }
+          }
+
+          if (complete) {
+            const fullBase64 = buffer.join("");
+            fileBuffers.delete(chunkMsg.id);
+            
+            const fileMessage: FileMessage = {
+              type: "file",
+              id: chunkMsg.id,
+              name: chunkMsg.name,
+              size: chunkMsg.size,
+              mimeType: chunkMsg.mimeType,
+              data: fullBase64,
+              sender: chunkMsg.sender,
+              timestamp: chunkMsg.timestamp
+            };
+            onDataChannelMessageCallback?.(fileMessage);
+          }
+        } else {
+          onDataChannelMessageCallback?.(message as DataChannelMessage);
+        }
       } catch (err) {
         console.error("[WebRTC] Failed to parse data channel message:", err);
       }
@@ -157,40 +210,23 @@ export function createWebRTCService(): WebRTCService {
     set onDataChannelMessage(cb) { onDataChannelMessageCallback = cb; },
     get onDataChannelStateChange() { return onDataChannelStateChangeCallback; },
     set onDataChannelStateChange(cb) { onDataChannelStateChangeCallback = cb; },
+    get onNegotiationNeeded() { return onNegotiationNeededCallback; },
+    set onNegotiationNeeded(cb) { onNegotiationNeededCallback = cb; },
 
     async initialize() {
       console.log("[WebRTC] Initializing...");
 
-      // 1. Try to get user media (camera + microphone)
-      // If no media devices available, we can still do signaling-only
-      try {
-        localStream = await navigator.mediaDevices.getUserMedia({
-          video: true,
-          audio: true,
-        });
-        console.log("[WebRTC] Local stream acquired");
-      } catch (err) {
-        console.warn("[WebRTC] Failed to get user media, continuing without cam/mic:", err);
-      }
-
-      // 2. Create RTCPeerConnection with STUN servers
+      // 1. Create RTCPeerConnection with STUN servers
       peerConnection = new RTCPeerConnection({
         iceServers: ICE_SERVERS,
       });
 
       console.log("[WebRTC] PeerConnection created");
 
-      // 3. Add local tracks to connection only if we have a local stream
-      if (localStream) {
-        localStream.getTracks().forEach((track) => {
-          if (peerConnection && localStream) {
-            peerConnection.addTrack(track, localStream);
-            console.log(`[WebRTC] Added ${track.kind} track to connection`);
-          }
-        });
-      } else {
-        console.log("[WebRTC] No local stream, skipping track addition");
-      }
+      peerConnection.onnegotiationneeded = () => {
+        console.log("[WebRTC] Negotiation needed");
+        onNegotiationNeededCallback?.();
+      };
 
       // 4. Set up ICE candidate handler
       peerConnection.onicecandidate = (event) => {
@@ -318,6 +354,24 @@ export function createWebRTCService(): WebRTCService {
       return remoteStream;
     },
 
+    async startMedia() {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: true,
+          audio: true,
+        });
+        localStream = stream;
+        stream.getTracks().forEach((track) => {
+          if (peerConnection) {
+            peerConnection.addTrack(track, stream);
+          }
+        });
+        console.log("[WebRTC] Media started and tracks added");
+      } catch (err) {
+        console.error("[WebRTC] Failed to get user media:", err);
+      }
+    },
+
     muteAudio() {
       if (localStream) {
         localStream.getAudioTracks().forEach((track) => {
@@ -390,20 +444,42 @@ export function createWebRTCService(): WebRTCService {
       // Read file as base64
       const reader = new FileReader();
       reader.onload = () => {
-        const base64 = reader.result as string;
-        const fileMessage: FileMessage = {
-          type: "file",
-          id: crypto.randomUUID(),
-          name: file.name,
-          size: file.size,
-          mimeType: file.type,
-          data: base64.split(",")[1], // Remove data URL prefix
-          sender,
-          timestamp: Date.now(),
-        };
+        const base64 = (reader.result as string).split(",")[1];
+        const id = crypto.randomUUID();
+        const timestamp = Date.now();
+        const CHUNK_SIZE = 16384; // 16KB per chunk
+        const totalChunks = Math.ceil(base64.length / CHUNK_SIZE);
+        
+        const sendChunks = async () => {
+          for (let i = 0; i < totalChunks; i++) {
+            while (dataChannel && dataChannel.bufferedAmount > 65535) {
+              await new Promise(r => setTimeout(r, 50));
+            }
+            
+            if (!dataChannel || dataChannel.readyState !== "open") {
+              console.error("[WebRTC] Data channel closed during file transfer");
+              break;
+            }
 
-        dataChannel?.send(JSON.stringify(fileMessage));
-        console.log("[WebRTC] Sent file message:", file.name);
+            const chunkData = base64.substring(i * CHUNK_SIZE, (i + 1) * CHUNK_SIZE);
+            const chunkMsg: FileChunkMessage = {
+              type: "file-chunk",
+              id,
+              chunkIndex: i,
+              totalChunks,
+              data: chunkData,
+              name: file.name,
+              size: file.size,
+              mimeType: file.type,
+              sender,
+              timestamp
+            };
+            dataChannel.send(JSON.stringify(chunkMsg));
+          }
+          console.log("[WebRTC] Sent file message:", file.name);
+        };
+        
+        sendChunks().catch(err => console.error("[WebRTC] Chunk send error:", err));
       };
       reader.readAsDataURL(file);
 

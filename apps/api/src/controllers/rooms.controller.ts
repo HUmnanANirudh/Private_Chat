@@ -145,6 +145,7 @@ export const joinRoomController = async (req: Request, res: Response) => {
       return res.status(200).json({
         message: "Joined room successfully",
         roomId,
+        token,
         updated,
       });
     }
@@ -162,6 +163,7 @@ export const joinRoomController = async (req: Request, res: Response) => {
       return res.status(200).json({
         message: "Welcome back to the room",
         roomId,
+        token,
       });
     }
   } catch (err) {

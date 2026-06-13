@@ -1,9 +1,10 @@
-import { Paperclip, Video, Share2, Trash2, MessageSquare } from "lucide-react";
+import { Paperclip, Video, Share2, Trash2, MessageSquare, Download, Mic, MicOff, VideoOff, PhoneOff, Clock, Copy } from "lucide-react";
 import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import type { ChatRoomProps } from "@repo/types";
 import { createChatManager } from "../services";
 import type { ChatManagerState } from "../services";
+import { VideoPlayer } from "./VideoPlayer";
 
 interface Message {
   id: string;
@@ -11,6 +12,10 @@ interface Message {
   sender: string;
   timestamp: number;
   isOwn: boolean;
+  isFile?: boolean;
+  fileData?: string;
+  fileName?: string;
+  mimeType?: string;
 }
 
 export default function Chat({ roomId }: ChatRoomProps) {
@@ -21,11 +26,63 @@ export default function Chat({ roomId }: ChatRoomProps) {
   const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
-  const [isChatOpen, setIsChatOpen] = useState(true);
+  const [isChatOpen, setIsChatOpen] = useState(false);
   const [dataChannelReady, setDataChannelReady] = useState(false);
+  const [isCallActive, setIsCallActive] = useState(false);
+  const [isAudioMuted, setIsAudioMuted] = useState(false);
+  const [isVideoEnabled, setIsVideoEnabled] = useState(true);
+  const [expiresAt, setExpiresAt] = useState<number | null>(null);
+  const [timeRemaining, setTimeRemaining] = useState<number | null>(null);
+  const [showDestroyModal, setShowDestroyModal] = useState(false);
+  const [countdown, setCountdown] = useState(3);
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const pendingMessagesRef = useRef<string[]>([]);
   const chatManagerRef = useRef<ReturnType<typeof createChatManager> | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  
+  const showModalRef = useRef(false);
+
+  // Timer effect
+  useEffect(() => {
+    if (!expiresAt) return;
+    const interval = setInterval(() => {
+      const now = Date.now();
+      const remaining = Math.max(0, expiresAt - now);
+      setTimeRemaining(remaining);
+      if (remaining === 0) {
+        handleRoomDestroyed();
+      }
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [expiresAt]);
+
+  const handleRoomDestroyed = () => {
+    if (showModalRef.current) return;
+    showModalRef.current = true;
+    setShowDestroyModal(true);
+    let count = 3;
+    setCountdown(count);
+    const interval = setInterval(() => {
+      count -= 1;
+      setCountdown(count);
+      if (count <= 0) {
+        clearInterval(interval);
+        navigate({ to: "/" });
+      }
+    }, 1000);
+  };
+
+  const formatTime = (ms: number) => {
+    const totalSeconds = Math.floor(ms / 1000);
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+    if (hours > 0) {
+      return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+    }
+    return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+  };
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -46,7 +103,7 @@ export default function Chat({ roomId }: ChatRoomProps) {
     }
   }, [dataChannelReady]);
 
-  const ensureToken = async (): Promise<string> => {
+  const ensureToken = async (): Promise<string | null> => {
     const urlParams = new URLSearchParams(window.location.search);
     const urlToken = urlParams.get("token");
     if (urlToken) {
@@ -54,14 +111,24 @@ export default function Chat({ roomId }: ChatRoomProps) {
       return urlToken;
     }
 
-    const res = await fetch(`/api/v1/room/join?roomId=${roomId}`, { credentials: "include" });
-    const data = await res.json();
-    if (data.token) {
-      sessionStorage.setItem("token", data.token);
-      return data.token;
+    try {
+      const res = await fetch(`/api/v1/room/join`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ roomId }),
+        credentials: "include"
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.token) {
+          sessionStorage.setItem("token", data.token);
+          return data.token;
+        }
+      }
+    } catch (e) {
+      console.error("[Chat] Failed to join via API", e);
     }
-
-    return crypto.randomUUID().slice(0, 16);
+    return null;
   };
 
   const callDestroyRoom = async () => {
@@ -83,12 +150,32 @@ export default function Chat({ roomId }: ChatRoomProps) {
     navigate({ to: "/" });
   };
 
+  const leaveRoom = () => {
+    chatManagerRef.current?.leaveRoom();
+    navigate({ to: "/" });
+  };
+
   useEffect(() => {
     let isMounted = true;
 
     const init = async () => {
       try {
-        const token = await ensureToken();
+        // First verify room exists
+        const roomRes = await fetch(`/api/v1/room?roomId=${roomId}`, { credentials: "include" });
+        if (!roomRes.ok) {
+          console.error("[Chat] Room fetch failed", roomRes.status);
+          handleRoomDestroyed();
+          return;
+        }
+
+        const data = await roomRes.json();
+        if (data?.Data?.meta?.expiresAt) {
+          setExpiresAt(parseInt(data.Data.meta.expiresAt));
+        }
+
+        let token = await ensureToken();
+        if (!token) token = crypto.randomUUID().slice(0, 16);
+
         if (!isMounted) return;
 
         const chatManager = createChatManager({
@@ -98,7 +185,7 @@ export default function Chat({ roomId }: ChatRoomProps) {
               setDataChannelReady(true);
             }
             if (state === "disconnected" || state === "idle") {
-              navigate({ to: "/" });
+              handleRoomDestroyed();
             }
           },
           onLocalStream: (stream) => setLocalStream(stream),
@@ -106,8 +193,14 @@ export default function Chat({ roomId }: ChatRoomProps) {
           onError: (err) => setError(err),
           onPeerDisconnected: () => {
             setRemoteStream(null);
-            setChatState("disconnected");
             setDataChannelReady(false);
+            // Verify if room was actually destroyed
+            fetch(`/api/v1/room?roomId=${roomId}`, { credentials: "include" })
+              .then(res => {
+                if (!res.ok) handleRoomDestroyed();
+                else setChatState("waiting");
+              })
+              .catch(() => handleRoomDestroyed());
           },
           onDataChannelOpen: () => {
             console.log("[Chat] Data channel open!");
@@ -122,6 +215,22 @@ export default function Chat({ roomId }: ChatRoomProps) {
                 sender: message.sender,
                 timestamp: message.timestamp || Date.now(),
                 isOwn: false,
+              },
+            ]);
+          },
+          onFileMessage: (message) => {
+            setMessages((prev) => [
+              ...prev,
+              {
+                id: message.id || crypto.randomUUID(),
+                content: `Received file: ${message.name}`,
+                sender: message.sender,
+                timestamp: message.timestamp || Date.now(),
+                isOwn: false,
+                isFile: true,
+                fileData: message.data,
+                fileName: message.name,
+                mimeType: message.mimeType
               },
             ]);
           },
@@ -150,7 +259,69 @@ export default function Chat({ roomId }: ChatRoomProps) {
   }, [roomId, navigate]);
 
   const handleCopy = async () => {
-    await navigator.clipboard.writeText(window.location.href);
+    try {
+      if (navigator.clipboard) {
+        await navigator.clipboard.writeText(window.location.href);
+      } else {
+        const textArea = document.createElement("textarea");
+        textArea.value = window.location.href;
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+      }
+      alert("Link copied to clipboard!");
+    } catch (e) {
+      console.error("Copy failed", e);
+      alert("Could not copy link. Your browser may require HTTPS for this feature.");
+    }
+  };
+
+  const handleStartCall = async () => {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      alert("Your browser blocks camera access. You must use HTTPS or localhost to use video and audio.");
+      return;
+    }
+    if (chatManagerRef.current) {
+      await chatManagerRef.current.startMedia();
+      setIsCallActive(true);
+    }
+  };
+
+  const handleToggleAudio = () => {
+    if (chatManagerRef.current) {
+      if (isAudioMuted) chatManagerRef.current.unmuteAudio();
+      else chatManagerRef.current.muteAudio();
+      setIsAudioMuted(!isAudioMuted);
+    }
+  };
+
+  const handleToggleVideo = () => {
+    if (chatManagerRef.current) {
+      chatManagerRef.current.toggleVideo();
+      setIsVideoEnabled(!isVideoEnabled);
+    }
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file && chatManagerRef.current) {
+      chatManagerRef.current.sendFile(file, "You");
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: crypto.randomUUID(),
+          content: `Sent file: ${file.name}`,
+          sender: "You",
+          timestamp: Date.now(),
+          isOwn: true,
+          isFile: true,
+          fileName: file.name,
+        },
+      ]);
+    }
+    if (e.target) e.target.value = "";
   };
 
   const handleSendMessage = () => {
@@ -179,167 +350,271 @@ export default function Chat({ roomId }: ChatRoomProps) {
   };
 
   return (
-    <div className="flex h-screen bg-zinc-950 text-zinc-100">
-      {/* Main Chat Area */}
-      <div className="flex-1 flex flex-col">
-        {/* Header */}
-        <header className="flex items-center justify-between gap-4 shrink-0 px-6 py-4 bg-zinc-900/80 backdrop-blur-md border-b border-zinc-800">
-          <div className="flex items-center gap-4">
-            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-violet-500 to-fuchsia-500 flex items-center justify-center font-bold text-white text-sm">
-              {roomId.slice(0, 2).toUpperCase()}
-            </div>
-            <div>
-              <h1 className="text-sm font-semibold text-zinc-100">Secure Room</h1>
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-zinc-500 font-mono">{roomId}</span>
-                <span className="text-xs text-zinc-600">•</span>
-                <span className={`text-xs ${dataChannelReady ? "text-green-500" : "text-zinc-500"}`}>
-                  {dataChannelReady ? "Connected" : "Connecting..."}
-                </span>
-              </div>
-            </div>
+    <div className="flex h-screen bg-zinc-950 text-zinc-100 overflow-hidden relative">
+      {/* Main Content Area */}
+      <div className={`flex-1 flex flex-col relative transition-all duration-300 ${isChatOpen ? 'mr-80' : ''}`}>
+        
+        {/* Floating Top Info */}
+        <div className="absolute top-4 left-4 z-20 flex gap-3">
+          <div className="bg-zinc-900/80 backdrop-blur-md border border-zinc-800 rounded-lg px-4 py-2 flex items-center gap-3 shadow-lg">
+            <div className="w-2 h-2 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)] animate-pulse" />
+            <span className="text-sm font-medium tracking-wide">{roomId}</span>
+            <div className="w-px h-4 bg-zinc-700 mx-1" />
+            <span className={`text-xs font-semibold ${dataChannelReady ? "text-green-500" : "text-zinc-400"}`}>
+              {dataChannelReady ? "SECURE" : "WAITING"}
+            </span>
           </div>
+          
+          {expiresAt && timeRemaining !== null && (
+            <div className="bg-zinc-900/80 backdrop-blur-md border border-zinc-800 rounded-lg px-4 py-2 flex items-center gap-2 shadow-lg">
+              <Clock size={16} className={timeRemaining < 60000 ? "text-red-500 animate-pulse" : "text-zinc-400"} />
+              <span className={`text-sm font-mono tracking-wider ${timeRemaining < 60000 ? "text-red-500 font-bold" : "text-zinc-100"}`}>
+                {formatTime(timeRemaining)}
+              </span>
+            </div>
+          )}
+        </div>
 
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setIsChatOpen(!isChatOpen)}
-              className={`p-2.5 rounded-lg transition-colors ${isChatOpen ? "bg-violet-600 text-white" : "bg-zinc-800 text-zinc-400 hover:text-white"}`}
-              title="Toggle chat"
-            >
-              <MessageSquare size={18} />
-            </button>
-
-            <button
-              onClick={handleCopy}
-              className="flex items-center gap-2 px-3 py-2 bg-zinc-800 hover:bg-zinc-700 rounded-lg transition-colors text-sm"
-            >
-              <Share2 size={16} />
-              <span className="hidden sm:inline">Share</span>
-            </button>
-
-            <button
-              onClick={destroyRoom}
-              className="flex items-center gap-2 px-3 py-2 bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white rounded-lg transition-colors text-sm font-medium"
-            >
-              <Trash2 size={16} />
-              <span className="hidden sm:inline">Destroy Room</span>
-            </button>
-          </div>
-        </header>
-
-        {/* Video / Content Area */}
-        <main className="flex-1 relative">
+        {/* Video Area */}
+        <main className="flex-1 relative flex items-center justify-center p-4 pb-24">
           {chatState === "connecting" || chatState === "idle" ? (
-            <div className="absolute inset-0 flex flex-col items-center justify-center">
-              <div className="w-14 h-14 border-4 border-violet-500/30 border-t-violet-500 rounded-full animate-spin" />
-              <p className="mt-4 text-zinc-400">Connecting to room...</p>
+            <div className="flex flex-col items-center justify-center">
+              <div className="w-12 h-12 border-4 border-zinc-500/30 border-t-zinc-500 rounded-full animate-spin" />
+              <p className="mt-4 text-zinc-400 text-sm font-medium tracking-wide">Establishing connection...</p>
             </div>
           ) : chatState === "waiting" ? (
-            <div className="absolute inset-0 flex flex-col items-center justify-center">
-              <div className="w-14 h-14 border-4 border-zinc-600 border-t-transparent rounded-full animate-spin" />
-              <h2 className="text-xl font-bold mt-4 text-zinc-300">Waiting for peer...</h2>
-              <p className="text-sm text-zinc-500 mt-1">Share the room link to invite someone</p>
-              <button
-                onClick={handleCopy}
-                className="mt-4 px-4 py-2 bg-violet-600 hover:bg-violet-500 rounded-lg transition-colors text-sm"
-              >
-                Copy Room Link
-              </button>
+            <div className="flex flex-col items-center justify-center bg-zinc-900/50 p-8 rounded-2xl border border-zinc-800 shadow-2xl max-w-md w-full text-center">
+              <div className="w-16 h-16 bg-zinc-800 rounded-full flex items-center justify-center mb-6 shadow-inner">
+                <Video className="text-zinc-400" size={28} />
+              </div>
+              <h2 className="text-2xl font-bold text-zinc-100 mb-2">Waiting for others</h2>
+              <p className="text-zinc-400 text-sm mb-8 leading-relaxed">Share this room link with the person you want to connect with.</p>
+              
+              <div className="w-full bg-zinc-950 border border-zinc-800 rounded-xl p-3 flex items-center justify-between mb-4">
+                <span className="text-sm font-mono text-zinc-300 truncate">{window.location.href}</span>
+                <button
+                  onClick={handleCopy}
+                  className="p-2 hover:bg-zinc-800 rounded-lg transition-colors text-zinc-400 hover:text-zinc-100 shrink-0"
+                  title="Copy link"
+                >
+                  <Copy size={16} />
+                </button>
+              </div>
             </div>
-          ) : remoteStream ? (
-            <div className="absolute inset-4 rounded-2xl overflow-hidden bg-black">
-              <VideoPlayer stream={remoteStream} className="w-full h-full object-cover" />
+          ) : remoteStream || localStream ? (
+            <div className="w-full h-full relative rounded-2xl overflow-hidden bg-zinc-900 border border-zinc-800 shadow-2xl transition-all duration-500">
+              {remoteStream ? (
+                <VideoPlayer stream={remoteStream} className="w-full h-full object-contain bg-black" />
+              ) : (
+                <div className="w-full h-full flex flex-col items-center justify-center bg-zinc-900">
+                  <div className="w-20 h-20 bg-zinc-800 rounded-full flex items-center justify-center mb-6">
+                    <VideoOff className="text-zinc-500" size={32} />
+                  </div>
+                  <h3 className="text-lg font-medium text-zinc-300">Remote video is off</h3>
+                </div>
+              )}
+              
               {localStream && (
-                <div className="absolute bottom-4 right-4 w-32 h-24 border-2 border-zinc-700 rounded-xl overflow-hidden shadow-xl">
-                  <VideoPlayer stream={localStream} muted className="w-full h-full object-cover" />
+                <div className={`absolute bottom-6 right-6 ${remoteStream ? "w-64 h-48 border border-zinc-700 shadow-2xl" : "w-full h-full inset-0 border-0"} rounded-xl overflow-hidden bg-zinc-950 z-10 transition-all duration-500`}>
+                  <VideoPlayer stream={localStream} muted className={`w-full h-full ${remoteStream ? 'object-cover' : 'object-contain'}`} />
+                  {isAudioMuted && (
+                    <div className="absolute top-3 right-3 bg-red-500 p-1.5 rounded-full shadow-lg z-20">
+                      <MicOff size={14} className="text-white" />
+                    </div>
+                  )}
                 </div>
               )}
             </div>
           ) : (
-            <div className="absolute inset-0 flex flex-col items-center justify-center opacity-50">
-              <Video size={64} className="text-zinc-600" />
-              <h2 className="text-xl font-bold mt-4 text-zinc-500">No video</h2>
-              <p className="text-sm text-zinc-600 mt-1">Video stream unavailable</p>
+            <div className="flex flex-col items-center justify-center text-center">
+              <div className="w-24 h-24 bg-zinc-900 rounded-full flex items-center justify-center mb-6 shadow-xl border border-zinc-800">
+                <VideoOff size={40} className="text-zinc-600" />
+              </div>
+              <h2 className="text-2xl font-bold text-zinc-100 mb-2">You're in the room</h2>
+              <p className="text-zinc-400 mb-8 max-w-sm">Your camera and microphone are currently off. You can start streaming whenever you're ready.</p>
+              <button 
+                onClick={handleStartCall}
+                className="px-6 py-3 bg-white text-black hover:bg-zinc-200 font-semibold rounded-xl transition-all flex items-center gap-3 shadow-lg"
+              >
+                <Video size={18} />
+                Start Video Call
+              </button>
             </div>
           )}
         </main>
 
-        {/* Message Input */}
-        <div className="shrink-0 px-6 py-4 bg-zinc-900/80 border-t border-zinc-800">
-          <div className="flex items-center gap-3">
-            <button
-              className="p-3 bg-zinc-800 hover:bg-zinc-700 rounded-xl transition-colors"
-              title="Attach file"
+        {/* Bottom Control Bar */}
+        <div className="h-24 bg-zinc-950/80 backdrop-blur-xl border-t border-zinc-800/50 flex items-center justify-between px-8 absolute bottom-0 left-0 right-0 z-20">
+          
+          <div className="flex-1 flex items-center gap-4">
+            <div className="hidden md:flex flex-col">
+              <span className="text-sm font-medium text-zinc-100">{timeRemaining ? formatTime(timeRemaining) : "--:--:--"}</span>
+              <span className="text-xs text-zinc-500 font-mono">{roomId}</span>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-center gap-4">
+            <button 
+              onClick={handleToggleAudio}
+              disabled={!localStream}
+              title={isAudioMuted ? "Turn on microphone" : "Turn off microphone"}
+              className={`p-4 rounded-full transition-all duration-200 ${!localStream ? 'bg-zinc-900 text-zinc-700 cursor-not-allowed' : isAudioMuted ? 'bg-red-500 hover:bg-red-600 text-white shadow-lg shadow-red-500/20' : 'bg-zinc-800 hover:bg-zinc-700 text-zinc-100'}`}
             >
-              <Paperclip size={20} />
+              {isAudioMuted ? <MicOff size={22} /> : <Mic size={22} />}
+            </button>
+            
+            <button 
+              onClick={handleToggleVideo}
+              disabled={!localStream}
+              title={!isVideoEnabled ? "Turn on camera" : "Turn off camera"}
+              className={`p-4 rounded-full transition-all duration-200 ${!localStream ? 'bg-zinc-900 text-zinc-700 cursor-not-allowed' : !isVideoEnabled ? 'bg-red-500 hover:bg-red-600 text-white shadow-lg shadow-red-500/20' : 'bg-zinc-800 hover:bg-zinc-700 text-zinc-100'}`}
+            >
+              {!isVideoEnabled ? <VideoOff size={22} /> : <Video size={22} />}
             </button>
 
-            <input
-              type="text"
-              placeholder="Type a message..."
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") handleSendMessage();
-              }}
-              className="flex-1 bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-3 text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-violet-500 transition-colors"
-            />
-
-            <button
-              onClick={handleSendMessage}
-              disabled={!input.trim()}
-              className="p-3 bg-violet-600 hover:bg-violet-500 disabled:bg-zinc-800 disabled:text-zinc-600 rounded-xl transition-colors"
+            <button 
+              onClick={leaveRoom}
+              title="Leave room"
+              className="p-4 rounded-full bg-red-500 hover:bg-red-600 text-white shadow-lg shadow-red-500/20 transition-all duration-200 ml-2"
             >
-              <Paperclip size={20} className="rotate-45" />
+              <PhoneOff size={22} />
+            </button>
+          </div>
+
+          <div className="flex-1 flex items-center justify-end gap-3">
+            <button
+              onClick={handleCopy}
+              title="Share room link"
+              className="p-3 rounded-full bg-zinc-900 hover:bg-zinc-800 text-zinc-300 transition-colors"
+            >
+              <Share2 size={20} />
+            </button>
+            <button
+              onClick={() => setIsChatOpen(!isChatOpen)}
+              title="Toggle chat panel"
+              className={`p-3 rounded-full transition-colors ${isChatOpen ? 'bg-white text-black shadow-lg' : 'bg-zinc-900 hover:bg-zinc-800 text-zinc-300'}`}
+            >
+              <MessageSquare size={20} />
             </button>
           </div>
         </div>
       </div>
 
       {/* Chat Sidebar */}
-      {isChatOpen && (
-        <aside className="w-80 bg-zinc-900 border-l border-zinc-800 flex flex-col shrink-0">
-          <div className="p-4 border-b border-zinc-800">
-            <h2 className="font-semibold text-sm">Messages</h2>
-          </div>
+      <aside className={`w-80 bg-zinc-950 border-l border-zinc-800/50 flex flex-col absolute top-0 bottom-0 right-0 transform transition-transform duration-300 ease-in-out z-30 shadow-2xl ${isChatOpen ? 'translate-x-0' : 'translate-x-full'}`}>
+        <div className="p-5 border-b border-zinc-800/50 flex items-center justify-between bg-zinc-900/30">
+          <h2 className="font-semibold text-sm tracking-wide text-zinc-100">In-call messages</h2>
+          <button onClick={() => setIsChatOpen(false)} className="md:hidden text-zinc-400 hover:text-white">
+            <Share2 size={16} className="rotate-45" />
+          </button>
+        </div>
 
-          <div className="flex-1 overflow-y-auto p-4 space-y-3">
-            {messages.length === 0 ? (
-              <div className="text-center text-zinc-500 text-sm py-8">
-                No messages yet. Start the conversation!
-              </div>
-            ) : (
-              <>
-                {messages.map((msg) => (
+        <div className="flex-1 overflow-y-auto p-5 space-y-4 bg-zinc-950">
+          {messages.length === 0 ? (
+            <div className="text-center text-zinc-500 text-sm py-8">
+              No messages yet. Start the conversation!
+            </div>
+          ) : (
+            <>
+              {messages.map((msg) => (
+                <div
+                  key={msg.id}
+                  className={`flex flex-col ${msg.isOwn ? "items-end" : "items-start"}`}
+                >
                   <div
-                    key={msg.id}
-                    className={`flex flex-col ${msg.isOwn ? "items-end" : "items-start"}`}
+                    className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm ${
+                      msg.isOwn
+                        ? "bg-zinc-100 text-zinc-900 rounded-br-md"
+                        : "bg-zinc-800 text-zinc-100 rounded-bl-md border border-zinc-700"
+                    }`}
                   >
-                    <div
-                      className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm ${
-                        msg.isOwn
-                          ? "bg-violet-600 text-white rounded-br-md"
-                          : "bg-zinc-800 text-zinc-100 rounded-bl-md"
-                      }`}
-                    >
-                      {!msg.isOwn && (
-                        <p className="text-xs text-zinc-400 mb-1 font-medium">{msg.sender}</p>
-                      )}
-                      <p className="break-words">{msg.content}</p>
-                    </div>
-                    <span className="text-[10px] text-zinc-600 mt-1 px-1">
-                      {new Date(msg.timestamp).toLocaleTimeString([], {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
-                    </span>
+                    {!msg.isOwn && (
+                      <p className="text-xs text-zinc-400 mb-1 font-medium">{msg.sender}</p>
+                    )}
+                    <p className="break-words">{msg.content}</p>
+                    {msg.isFile && msg.fileData && (
+                      <a 
+                        href={`data:${msg.mimeType || 'application/octet-stream'};base64,${msg.fileData}`} 
+                        download={msg.fileName}
+                        className={`mt-2 flex items-center gap-2 text-xs font-medium px-3 py-2 rounded-lg transition-colors w-fit border ${
+                          msg.isOwn ? "bg-zinc-200/50 hover:bg-zinc-200 border-zinc-300" : "bg-zinc-700/50 hover:bg-zinc-600 border-zinc-600"
+                        }`}
+                      >
+                        <Download size={14} /> Download File
+                      </a>
+                    )}
                   </div>
-                ))}
-                <div ref={messagesEndRef} />
-              </>
-            )}
+                  <span className="text-[10px] text-zinc-600 mt-1 px-1">
+                    {new Date(msg.timestamp).toLocaleTimeString([], {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </span>
+                </div>
+              ))}
+              <div ref={messagesEndRef} />
+            </>
+          )}
+        </div>
+        
+        {/* Chat Input Section */}
+        <div className="shrink-0 p-4 bg-zinc-950 border-t border-zinc-800/50">
+          <div className="flex bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden focus-within:border-zinc-600 transition-colors shadow-inner">
+            <input 
+              type="file" 
+              ref={fileInputRef} 
+              className="hidden" 
+              onChange={handleFileChange} 
+            />
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              className="p-3 text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800 transition-colors"
+              title="Attach file"
+            >
+              <Paperclip size={18} />
+            </button>
+
+            <input
+              type="text"
+              placeholder="Send a message..."
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleSendMessage();
+              }}
+              className="flex-1 bg-transparent px-2 py-3 text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none"
+            />
+
+            <button
+              onClick={handleSendMessage}
+              disabled={!input.trim()}
+              className="p-3 text-zinc-400 hover:text-white hover:bg-zinc-800 disabled:opacity-50 disabled:hover:bg-transparent disabled:hover:text-zinc-400 transition-colors"
+            >
+              <MessageSquare size={18} className="rotate-0" />
+            </button>
           </div>
-        </aside>
+        </div>
+      </aside>
+
+      {/* Room Destroyed Modal */}
+      {showDestroyModal && (
+        <div className="absolute inset-0 bg-black/80 flex items-center justify-center z-50 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-8 max-w-sm w-full mx-4 shadow-2xl flex flex-col items-center text-center transform animate-in zoom-in-95 duration-200">
+            <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mb-6">
+              <PhoneOff size={32} className="text-red-500" />
+            </div>
+            <h2 className="text-2xl font-bold text-zinc-100 mb-2">Room Destroyed</h2>
+            <p className="text-zinc-400 mb-8">
+              This room no longer exists. Redirecting to home in <span className="text-white font-bold">{countdown}</span>...
+            </p>
+            <button
+              onClick={() => navigate({ to: "/" })}
+              className="w-full py-3 bg-white text-black font-semibold rounded-xl hover:bg-zinc-200 transition-colors shadow-lg"
+            >
+              Redirect Now
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );

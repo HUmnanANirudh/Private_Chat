@@ -56,10 +56,13 @@ export const joinRoomHandler = async (ws: ServerWebSocket<wsData>, roomId: strin
   }))
 
   if (room.size === 2) {
+    let index = 0;
     for (const [, peer] of room) {
       peer.send(JSON.stringify({
-        type: "ready"
+        type: "ready",
+        initiator: index === 0
       }));
+      index++;
     }
   }
 }

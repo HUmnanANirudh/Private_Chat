@@ -9,7 +9,7 @@ export type SignalingMessage =
   | { type: "peer-disconnect"; roomId: string; token: string };
 
 export type IncomingSignalingMessage =
-  | { type: "ready" }
+  | { type: "ready"; initiator?: boolean }
   | { type: "offer"; data: RTCSessionDescriptionInit; from: string }
   | { type: "answer"; data: RTCSessionDescriptionInit; from: string }
   | { type: "ice-candidate"; data: RTCIceCandidateInit; from: string }
@@ -18,7 +18,7 @@ export type IncomingSignalingMessage =
 
 export interface SignalingCallbacks {
   onPeerJoined?: (data: { token: string }) => void;
-  onReady?: () => void;
+  onReady?: (isInitiator: boolean) => void;
   onOffer?: (data: { offer: RTCSessionDescriptionInit; from: string }) => void;
   onAnswer?: (data: { answer: RTCSessionDescriptionInit; from: string }) => void;
   onIceCandidate?: (data: { candidate: RTCIceCandidateInit; from: string }) => void;
@@ -75,8 +75,8 @@ export function createSignalingService(callbacks: SignalingCallbacks): Signaling
 
           switch (message.type) {
             case "ready":
-              console.log("[Signaling] Both peers ready, can start WebRTC");
-              callbacks.onReady?.();
+              console.log("[Signaling] Both peers ready, can start WebRTC", (message as any).initiator);
+              callbacks.onReady?.((message as any).initiator || false);
               break;
 
             case "offer":
