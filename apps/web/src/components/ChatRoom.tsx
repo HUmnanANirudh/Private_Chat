@@ -553,7 +553,7 @@ export default function Chat({ roomId }: ChatRoomProps) {
                     {!msg.isOwn && (
                       <p className="text-xs text-zinc-400 mb-1 font-medium">{msg.sender}</p>
                     )}
-                    <p className="break-all whitespace-pre-wrap">{msg.content}</p>
+                    <p className="break-words whitespace-pre-wrap overflow-hidden">{msg.content}</p>
                     {msg.isFile && msg.fileData && (
                       <a 
                         href={`data:${msg.mimeType || 'application/octet-stream'};base64,${msg.fileData}`} 

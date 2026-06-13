@@ -110,17 +110,40 @@ export function createChatManager(callbacks: ChatManagerCallbacks): ChatManager 
     callbacks.onStateChange?.(newState);
   };
 
+  let isNegotiating = false;
+  let pendingRenegotiation = false;
+
+  const tryRenegotiate = async () => {
+    if (state === "idle" || state === "waiting" || state === "connecting") return;
+    if (isNegotiating || webrtc.peerConnection?.signalingState !== "stable") {
+      pendingRenegotiation = true;
+      return;
+    }
+    console.log("[ChatManager] Executing renegotiation...");
+    await startConnection();
+  };
+
   const startConnection = async () => {
+    if (isNegotiating) return;
+
     if (state !== "connected") {
       setState("connecting-to-peer");
     }
+
     try {
+      isNegotiating = true;
       const offer = await webrtc.createOffer();
       signaling.sendOffer(offer, ""); // "" means send to the other peer
       console.log("[ChatManager] Sent offer");
     } catch (err) {
       console.error("[ChatManager] Error creating offer:", err);
       callbacks.onError?.("Failed to create offer");
+    } finally {
+      isNegotiating = false;
+      if (pendingRenegotiation && webrtc.peerConnection?.signalingState === "stable") {
+        pendingRenegotiation = false;
+        tryRenegotiate();
+      }
     }
   };
 
@@ -142,29 +165,6 @@ export function createChatManager(callbacks: ChatManagerCallbacks): ChatManager 
   webrtc.onRemoteStream = (stream) => {
     console.log("[ChatManager] Remote stream received");
     callbacks.onRemoteStream?.(stream);
-  };
-
-  let isNegotiating = false;
-  let pendingRenegotiation = false;
-
-  const tryRenegotiate = async () => {
-    if (state === "idle" || state === "waiting" || state === "connecting") return;
-    if (isNegotiating || webrtc.peerConnection?.signalingState !== "stable") {
-      pendingRenegotiation = true;
-      return;
-    }
-
-    try {
-      isNegotiating = true;
-      console.log("[ChatManager] Executing renegotiation...");
-      await startConnection();
-    } finally {
-      isNegotiating = false;
-      if (pendingRenegotiation && webrtc.peerConnection?.signalingState === "stable") {
-        pendingRenegotiation = false;
-        tryRenegotiate();
-      }
-    }
   };
 
   webrtc.onNegotiationNeeded = async () => {
