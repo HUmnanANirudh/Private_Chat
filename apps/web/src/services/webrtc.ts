@@ -49,8 +49,6 @@ export type DataChannelMessage = TextMessage | FileMessage | FileChunkMessage;
 export interface WebRTCService {
   // Connection state
   peerConnection: RTCPeerConnection | null;
-  localStream: MediaStream | null;
-  remoteStream: MediaStream | null;
   connectionState: PeerConnectionState;
   dataChannel: RTCDataChannel | null;
   dataChannelState: string;
@@ -64,18 +62,6 @@ export interface WebRTCService {
   createAnswer: (offer: RTCSessionDescriptionInit) => Promise<RTCSessionDescriptionInit>;
   addIceCandidate: (candidate: RTCIceCandidateInit) => Promise<void>;
 
-  // Stream management
-  getLocalStream: () => MediaStream | null;
-  getRemoteStream: () => MediaStream | null;
-
-  // Media controls
-  startMedia: (options?: MediaStreamConstraints) => Promise<void>;
-  muteAudio: () => void;
-  unmuteAudio: () => void;
-  toggleVideo: () => void;
-  isAudioMuted: () => boolean;
-  isVideoEnabled: () => boolean;
-
   // Data channel
   sendTextMessage: (content: string, sender: string) => boolean;
   sendFile: (file: File, sender: string) => Promise<boolean>;
@@ -83,7 +69,6 @@ export interface WebRTCService {
 
   // Event callbacks
   onIceCandidate: ((candidate: RTCIceCandidate) => void) | null;
-  onRemoteStream: ((stream: MediaStream) => void) | null;
   onConnectionStateChange: ((state: PeerConnectionState) => void) | null;
   onSignalingStateChange: ((state: RTCSignalingState) => void) | null;
   onDataChannelMessage: ((message: DataChannelMessage) => void) | null;
@@ -94,17 +79,12 @@ export interface WebRTCService {
 
 export function createWebRTCService(): WebRTCService {
   let peerConnection: RTCPeerConnection | null = null;
-  let localStream: MediaStream | null = null;
-  let remoteStream: MediaStream | null = null;
   let connectionState: PeerConnectionState = "new";
   let dataChannel: RTCDataChannel | null = null;
   let dataChannelState = "new";
-  let audioMuted = false;
-  let videoEnabled = true;
 
   // Callbacks (stored in closure, not on the returned object)
   let onIceCandidateCallback: ((candidate: RTCIceCandidate) => void) | null = null;
-  let onRemoteStreamCallback: ((stream: MediaStream) => void) | null = null;
   let onConnectionStateChangeCallback: ((state: PeerConnectionState) => void) | null = null;
   let onSignalingStateChangeCallback: ((state: RTCSignalingState) => void) | null = null;
   let onDataChannelMessageCallback: ((message: DataChannelMessage) => void) | null = null;
@@ -196,16 +176,12 @@ export function createWebRTCService(): WebRTCService {
 
   const service: WebRTCService = {
     get peerConnection() { return peerConnection; },
-    get localStream() { return localStream; },
-    get remoteStream() { return remoteStream; },
     get connectionState() { return connectionState; },
     get dataChannel() { return dataChannel; },
     get dataChannelState() { return dataChannelState; },
 
     get onIceCandidate() { return onIceCandidateCallback; },
     set onIceCandidate(cb) { onIceCandidateCallback = cb; },
-    get onRemoteStream() { return onRemoteStreamCallback; },
-    set onRemoteStream(cb) { onRemoteStreamCallback = cb; },
     get onConnectionStateChange() { return onConnectionStateChangeCallback; },
     set onConnectionStateChange(cb) { onConnectionStateChangeCallback = cb; },
     get onSignalingStateChange() { return onSignalingStateChangeCallback; },
@@ -225,13 +201,6 @@ export function createWebRTCService(): WebRTCService {
         iceServers: ICE_SERVERS,
       });
       console.log("[WebRTC] PeerConnection created");
-
-      // Add existing local stream tracks if present
-      if (localStream) {
-        localStream.getTracks().forEach((track) => {
-          peerConnection?.addTrack(track, localStream!);
-        });
-      }
 
       peerConnection.onnegotiationneeded = () => {
         console.log("[WebRTC] Negotiation needed");
@@ -266,15 +235,6 @@ export function createWebRTCService(): WebRTCService {
         }
       };
 
-      // 6. Set up remote stream handler
-      peerConnection.ontrack = (event) => {
-        console.log("[WebRTC] Remote track received:", event.streams[0]);
-        // Clone stream so React state detects the change and VideoPlayer reassigns srcObject
-        const stream = new MediaStream(event.streams[0].getTracks());
-        remoteStream = stream;
-        onRemoteStreamCallback?.(stream);
-      };
-
       // 7. Set up data channel handler (for receiving)
       peerConnection.ondatachannel = (event) => {
         console.log("[WebRTC] Data channel RECEIVED from peer:", event.channel.label, "state:", event.channel.readyState);
@@ -287,11 +247,6 @@ export function createWebRTCService(): WebRTCService {
     cleanup() {
       console.log("[WebRTC] Cleaning up...");
 
-      if (localStream) {
-        localStream.getTracks().forEach((track) => track.stop());
-        localStream = null;
-      }
-
       if (dataChannel) {
         dataChannel.close();
         dataChannel = null;
@@ -302,7 +257,6 @@ export function createWebRTCService(): WebRTCService {
         peerConnection = null;
       }
 
-      remoteStream = null;
       connectionState = "closed";
       dataChannelState = "closed";
       console.log("[WebRTC] Cleanup complete");
@@ -361,77 +315,6 @@ export function createWebRTCService(): WebRTCService {
       dataChannel = peerConnection.createDataChannel(label);
       setupDataChannel(dataChannel);
       return dataChannel;
-    },
-
-    getLocalStream() {
-      return localStream;
-    },
-
-    getRemoteStream() {
-      return remoteStream;
-    },
-
-    async startMedia(options: MediaStreamConstraints = { video: true, audio: true }) {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia(options);
-        
-        if (!localStream) {
-          localStream = stream;
-        } else {
-          stream.getTracks().forEach(track => localStream!.addTrack(track));
-        }
-
-        stream.getTracks().forEach((track) => {
-          if (peerConnection) {
-            peerConnection.addTrack(track, localStream!);
-          }
-        });
-        
-        if (options.audio) audioMuted = false;
-        if (options.video) videoEnabled = true;
-
-        console.log("[WebRTC] Media started and tracks added", options);
-      } catch (err) {
-        console.error("[WebRTC] Failed to get user media:", err);
-      }
-    },
-
-    muteAudio() {
-      if (localStream) {
-        localStream.getAudioTracks().forEach((track) => {
-          track.enabled = false;
-          audioMuted = true;
-          console.log("[WebRTC] Audio muted");
-        });
-      }
-    },
-
-    unmuteAudio() {
-      if (localStream) {
-        localStream.getAudioTracks().forEach((track) => {
-          track.enabled = true;
-          audioMuted = false;
-          console.log("[WebRTC] Audio unmuted");
-        });
-      }
-    },
-
-    toggleVideo() {
-      if (localStream) {
-        localStream.getVideoTracks().forEach((track) => {
-          track.enabled = !track.enabled;
-          videoEnabled = track.enabled;
-          console.log("[WebRTC] Video enabled:", track.enabled);
-        });
-      }
-    },
-
-    isAudioMuted() {
-      return audioMuted;
-    },
-
-    isVideoEnabled() {
-      return videoEnabled;
     },
 
     sendTextMessage(content: string, sender: string) {
@@ -525,8 +408,6 @@ export function createWebRTCService(): WebRTCService {
         peerConnection.close();
         peerConnection = null;
       }
-      remoteStream = null;
-      onRemoteStreamCallback?.(new MediaStream()); // Clear remote video
     },
   };
 

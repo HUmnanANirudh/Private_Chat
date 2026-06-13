@@ -7,8 +7,6 @@ export type ChatManagerState = "idle" | "connecting" | "waiting" | "connecting-t
 
 export interface ChatManagerCallbacks {
   onStateChange?: (state: ChatManagerState) => void;
-  onLocalStream?: (stream: MediaStream) => void;
-  onRemoteStream?: (stream: MediaStream) => void;
   onError?: (error: string) => void;
   onPeerDisconnected?: () => void;
   onTextMessage?: (message: TextMessage) => void;
@@ -25,12 +23,6 @@ export interface ChatManager {
   leaveRoom: () => void;
   sendTextMessage: (content: string, sender: string) => boolean;
   sendFile: (file: File, sender: string) => Promise<boolean>;
-  startMedia: (options?: MediaStreamConstraints) => Promise<void>;
-  muteAudio: () => void;
-  unmuteAudio: () => void;
-  toggleVideo: () => void;
-  isAudioMuted: () => boolean;
-  isVideoEnabled: () => boolean;
 }
 
 export function createChatManager(callbacks: ChatManagerCallbacks): ChatManager {
@@ -162,11 +154,6 @@ export function createChatManager(callbacks: ChatManagerCallbacks): ChatManager 
     }
   };
 
-  webrtc.onRemoteStream = (stream) => {
-    console.log("[ChatManager] Remote stream received");
-    callbacks.onRemoteStream?.(stream);
-  };
-
   webrtc.onNegotiationNeeded = async () => {
     tryRenegotiate();
   };
@@ -212,12 +199,6 @@ export function createChatManager(callbacks: ChatManagerCallbacks): ChatManager 
         // Initialize WebRTC first (gets media + creates peer connection)
         await webrtc.initialize();
 
-        // Get local stream and pass it to callbacks
-        const localStream = webrtc.getLocalStream();
-        if (localStream) {
-          callbacks.onLocalStream?.(localStream);
-        }
-
         // Connect signaling (this joins the room via WebSocket)
         signaling.connect(roomId, token);
         setState("waiting");
@@ -245,34 +226,6 @@ export function createChatManager(callbacks: ChatManagerCallbacks): ChatManager 
 
     async sendFile(file: File, sender: string) {
       return await webrtc.sendFile(file, sender);
-    },
-
-    async startMedia(options?: MediaStreamConstraints) {
-      await webrtc.startMedia(options);
-      const localStream = webrtc.getLocalStream();
-      if (localStream) {
-        callbacks.onLocalStream?.(localStream);
-      }
-    },
-
-    muteAudio() {
-      webrtc.muteAudio();
-    },
-
-    unmuteAudio() {
-      webrtc.unmuteAudio();
-    },
-
-    toggleVideo() {
-      webrtc.toggleVideo();
-    },
-
-    isAudioMuted() {
-      return webrtc.isAudioMuted();
-    },
-
-    isVideoEnabled() {
-      return webrtc.isVideoEnabled();
     },
   };
 }
