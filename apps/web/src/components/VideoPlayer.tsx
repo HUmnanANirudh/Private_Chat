@@ -13,7 +13,9 @@ export function VideoPlayer({ stream, muted = false, className = "", autoPlay = 
 
   useEffect(() => {
     if (videoRef.current && stream) {
-      videoRef.current.srcObject = stream;
+      if (videoRef.current.srcObject !== stream) {
+        videoRef.current.srcObject = stream;
+      }
       if (autoPlay) {
         videoRef.current.play().catch(err => {
           console.error("Autoplay blocked by browser:", err);

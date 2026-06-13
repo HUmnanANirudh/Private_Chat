@@ -269,8 +269,10 @@ export function createWebRTCService(): WebRTCService {
       // 6. Set up remote stream handler
       peerConnection.ontrack = (event) => {
         console.log("[WebRTC] Remote track received:", event.streams[0]);
-        remoteStream = event.streams[0];
-        onRemoteStreamCallback?.(event.streams[0]);
+        // Clone stream so React state detects the change and VideoPlayer reassigns srcObject
+        const stream = new MediaStream(event.streams[0].getTracks());
+        remoteStream = stream;
+        onRemoteStreamCallback?.(stream);
       };
 
       // 7. Set up data channel handler (for receiving)
