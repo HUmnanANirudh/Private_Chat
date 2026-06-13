@@ -1,4 +1,4 @@
-import { Paperclip, Video, Share2, Trash2, MessageSquare, Download, Mic, MicOff, VideoOff, PhoneOff, Clock, Copy } from "lucide-react";
+import { Paperclip, Video, Share2, Trash2, MessageSquare, Download, Mic, MicOff, VideoOff, PhoneOff, Clock } from "lucide-react";
 import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import type { ChatRoomProps } from "@repo/types";
@@ -183,7 +183,7 @@ export default function Chat({ roomId }: ChatRoomProps) {
             if (state === "connected") {
               setDataChannelReady(true);
             }
-            if (state === "disconnected" || state === "idle") {
+            if (state === "idle") {
               handleRoomDestroyed();
             }
           },
@@ -287,7 +287,15 @@ export default function Chat({ roomId }: ChatRoomProps) {
     }
   };
 
-  const handleToggleAudio = () => {
+  const handleToggleAudio = async () => {
+    if (!localStream) {
+      await handleStartCall();
+      if (chatManagerRef.current) {
+        chatManagerRef.current.toggleVideo(); // Turn off video since they only asked for audio
+        setIsVideoEnabled(false);
+      }
+      return;
+    }
     if (chatManagerRef.current) {
       if (isAudioMuted) chatManagerRef.current.unmuteAudio();
       else chatManagerRef.current.muteAudio();
@@ -295,29 +303,58 @@ export default function Chat({ roomId }: ChatRoomProps) {
     }
   };
 
-  const handleToggleVideo = () => {
+  const handleToggleVideo = async () => {
+    if (!localStream) {
+      await handleStartCall();
+      if (chatManagerRef.current) {
+        chatManagerRef.current.muteAudio(); // Turn off audio since they only asked for video
+        setIsAudioMuted(true);
+      }
+      return;
+    }
     if (chatManagerRef.current) {
       chatManagerRef.current.toggleVideo();
       setIsVideoEnabled(!isVideoEnabled);
     }
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file && chatManagerRef.current) {
-      chatManagerRef.current.sendFile(file, "You");
+      const messageId = crypto.randomUUID();
+      
+      // Temporary sending message
       setMessages((prev) => [
         ...prev,
         {
-          id: crypto.randomUUID(),
-          content: `Sent file: ${file.name}`,
+          id: messageId,
+          content: `Sending file: ${file.name}... (Please wait)`,
           sender: "You",
           timestamp: Date.now(),
           isOwn: true,
-          isFile: true,
-          fileName: file.name,
+          isFile: false,
         },
       ]);
+
+      const success = await chatManagerRef.current.sendFile(file, "You");
+      
+      if (success) {
+        setMessages((prev) => prev.map(msg => 
+          msg.id === messageId ? {
+            ...msg,
+            content: `Sent file: ${file.name}`,
+            isFile: true,
+            fileName: file.name,
+          } : msg
+        ));
+      } else {
+        setMessages((prev) => prev.map(msg => 
+          msg.id === messageId ? {
+            ...msg,
+            content: `Failed to send file: ${file.name}`,
+          } : msg
+        ));
+      }
     }
     if (e.target) e.target.value = "";
   };
@@ -348,9 +385,9 @@ export default function Chat({ roomId }: ChatRoomProps) {
   };
 
   return (
-    <div className="flex h-screen bg-zinc-950 text-zinc-100 overflow-hidden relative">
+    <div className="flex h-screen w-full bg-zinc-950 text-zinc-100 overflow-hidden relative">
       {/* Main Content Area */}
-      <div className={`flex-1 flex flex-col relative transition-all duration-300 ${isChatOpen ? 'mr-80' : ''}`}>
+      <div className={`flex-1 flex flex-col relative transition-all duration-300 ${isChatOpen ? 'md:mr-80' : ''}`}>
         
         {/* Floating Top Info */}
         <div className="absolute top-4 left-4 z-20 flex gap-3">
@@ -374,77 +411,40 @@ export default function Chat({ roomId }: ChatRoomProps) {
         </div>
 
         {/* Video Area */}
-        <main className="flex-1 relative flex items-center justify-center p-4 pb-24">
+        <main className="flex-1 relative p-4 pb-24">
           {error && (
             <div className="absolute top-20 left-1/2 transform -translate-x-1/2 bg-red-500/90 text-white px-6 py-3 rounded-xl shadow-2xl z-50 animate-in fade-in slide-in-from-top-4">
               <p className="font-semibold">{error}</p>
             </div>
           )}
 
-          {chatState === "connecting" || chatState === "idle" ? (
-            <div className="flex flex-col items-center justify-center">
-              <div className="w-12 h-12 border-4 border-zinc-500/30 border-t-zinc-500 rounded-full animate-spin" />
-              <p className="mt-4 text-zinc-400 text-sm font-medium tracking-wide">Establishing connection...</p>
-            </div>
-          ) : chatState === "waiting" ? (
-            <div className="flex flex-col items-center justify-center bg-zinc-900/50 p-8 rounded-2xl border border-zinc-800 shadow-2xl max-w-md w-full text-center">
-              <div className="w-16 h-16 bg-zinc-800 rounded-full flex items-center justify-center mb-6 shadow-inner">
-                <Video className="text-zinc-400" size={28} />
+          <div className="w-full h-full relative rounded-2xl overflow-hidden bg-zinc-900 border border-zinc-800 shadow-2xl transition-all duration-500">
+            {remoteStream ? (
+              <VideoPlayer stream={remoteStream} className="w-full h-full object-cover bg-black" />
+            ) : (
+              <div className="w-full h-full flex flex-col items-center justify-center bg-zinc-900">
+                <VideoOff size={48} className="text-zinc-700 mb-4 opacity-30" />
+                <p className="text-lg font-medium text-zinc-600 opacity-60">
+                  {chatState === "connecting" || chatState === "idle" ? "Connecting to room..." : "Waiting for peer..."}
+                </p>
               </div>
-              <h2 className="text-2xl font-bold text-zinc-100 mb-2">Waiting for others</h2>
-              <p className="text-zinc-400 text-sm mb-8 leading-relaxed">Share this room link with the person you want to connect with.</p>
-              
-              <div className="w-full bg-zinc-950 border border-zinc-800 rounded-xl p-3 flex items-center justify-between mb-4">
-                <span className="text-sm font-mono text-zinc-300 truncate">{window.location.href}</span>
-                <button
-                  onClick={handleCopy}
-                  className="p-2 hover:bg-zinc-800 rounded-lg transition-colors text-zinc-400 hover:text-zinc-100 shrink-0"
-                  title="Copy link"
-                >
-                  <Copy size={16} />
-                </button>
-              </div>
-            </div>
-          ) : remoteStream || localStream ? (
-            <div className="w-full h-full relative rounded-2xl overflow-hidden bg-zinc-900 border border-zinc-800 shadow-2xl transition-all duration-500">
-              {remoteStream ? (
-                <VideoPlayer stream={remoteStream} className="w-full h-full object-contain bg-black" />
+            )}
+            
+            <div className={`absolute bottom-6 right-6 ${remoteStream ? "w-64 h-48 border border-zinc-700 shadow-2xl" : "w-full h-full inset-0 border-0"} rounded-xl overflow-hidden bg-zinc-950 z-10 transition-all duration-500`}>
+              {localStream ? (
+                <VideoPlayer stream={localStream} muted className={`w-full h-full ${remoteStream ? 'object-cover' : 'object-contain'}`} />
               ) : (
-                <div className="w-full h-full flex flex-col items-center justify-center bg-zinc-900">
-                  <div className="w-20 h-20 bg-zinc-800 rounded-full flex items-center justify-center mb-6">
-                    <VideoOff className="text-zinc-500" size={32} />
-                  </div>
-                  <h3 className="text-lg font-medium text-zinc-300">Remote video is off</h3>
+                <div className="w-full h-full flex items-center justify-center bg-zinc-950">
+                  <VideoOff size={48} className="text-zinc-700 opacity-30" />
                 </div>
               )}
-              
-              {localStream && (
-                <div className={`absolute bottom-6 right-6 ${remoteStream ? "w-64 h-48 border border-zinc-700 shadow-2xl" : "w-full h-full inset-0 border-0"} rounded-xl overflow-hidden bg-zinc-950 z-10 transition-all duration-500`}>
-                  <VideoPlayer stream={localStream} muted className={`w-full h-full ${remoteStream ? 'object-cover' : 'object-contain'}`} />
-                  {isAudioMuted && (
-                    <div className="absolute top-3 right-3 bg-red-500 p-1.5 rounded-full shadow-lg z-20">
-                      <MicOff size={14} className="text-white" />
-                    </div>
-                  )}
+              {isAudioMuted && localStream && (
+                <div className="absolute top-3 right-3 bg-red-500 p-1.5 rounded-full shadow-lg z-20">
+                  <MicOff size={14} className="text-white" />
                 </div>
               )}
             </div>
-          ) : (
-            <div className="flex flex-col items-center justify-center text-center">
-              <div className="w-24 h-24 bg-zinc-900 rounded-full flex items-center justify-center mb-6 shadow-xl border border-zinc-800">
-                <VideoOff size={40} className="text-zinc-600" />
-              </div>
-              <h2 className="text-2xl font-bold text-zinc-100 mb-2">You're in the room</h2>
-              <p className="text-zinc-400 mb-8 max-w-sm">Your camera and microphone are currently off. You can start streaming whenever you're ready.</p>
-              <button 
-                onClick={handleStartCall}
-                className="px-6 py-3 bg-white text-black hover:bg-zinc-200 font-semibold rounded-xl transition-all flex items-center gap-3 shadow-lg"
-              >
-                <Video size={18} />
-                Start Video Call
-              </button>
-            </div>
-          )}
+          </div>
         </main>
 
         {/* Bottom Control Bar */}
@@ -460,20 +460,18 @@ export default function Chat({ roomId }: ChatRoomProps) {
           <div className="flex items-center justify-center gap-4">
             <button 
               onClick={handleToggleAudio}
-              disabled={!localStream}
-              title={isAudioMuted ? "Turn on microphone" : "Turn off microphone"}
-              className={`p-4 rounded-full transition-all duration-200 ${!localStream ? 'bg-zinc-900 text-zinc-700 cursor-not-allowed' : isAudioMuted ? 'bg-red-500 hover:bg-red-600 text-white shadow-lg shadow-red-500/20' : 'bg-zinc-800 hover:bg-zinc-700 text-zinc-100'}`}
+              title={(!localStream || isAudioMuted) ? "Turn on microphone" : "Turn off microphone"}
+              className={`p-4 rounded-full transition-all duration-200 ${(!localStream || isAudioMuted) ? 'bg-red-500 hover:bg-red-600 text-white shadow-lg shadow-red-500/20' : 'bg-zinc-800 hover:bg-zinc-700 text-zinc-100'}`}
             >
-              {isAudioMuted ? <MicOff size={22} /> : <Mic size={22} />}
+              {(!localStream || isAudioMuted) ? <MicOff size={22} /> : <Mic size={22} />}
             </button>
             
             <button 
               onClick={handleToggleVideo}
-              disabled={!localStream}
-              title={!isVideoEnabled ? "Turn on camera" : "Turn off camera"}
-              className={`p-4 rounded-full transition-all duration-200 ${!localStream ? 'bg-zinc-900 text-zinc-700 cursor-not-allowed' : !isVideoEnabled ? 'bg-red-500 hover:bg-red-600 text-white shadow-lg shadow-red-500/20' : 'bg-zinc-800 hover:bg-zinc-700 text-zinc-100'}`}
+              title={(!localStream || !isVideoEnabled) ? "Turn on camera" : "Turn off camera"}
+              className={`p-4 rounded-full transition-all duration-200 ${(!localStream || !isVideoEnabled) ? 'bg-red-500 hover:bg-red-600 text-white shadow-lg shadow-red-500/20' : 'bg-zinc-800 hover:bg-zinc-700 text-zinc-100'}`}
             >
-              {!isVideoEnabled ? <VideoOff size={22} /> : <Video size={22} />}
+              {(!localStream || !isVideoEnabled) ? <VideoOff size={22} /> : <Video size={22} />}
             </button>
 
             <button 
@@ -542,7 +540,7 @@ export default function Chat({ roomId }: ChatRoomProps) {
                     {!msg.isOwn && (
                       <p className="text-xs text-zinc-400 mb-1 font-medium">{msg.sender}</p>
                     )}
-                    <p className="break-words">{msg.content}</p>
+                    <p className="break-all whitespace-pre-wrap">{msg.content}</p>
                     {msg.isFile && msg.fileData && (
                       <a 
                         href={`data:${msg.mimeType || 'application/octet-stream'};base64,${msg.fileData}`} 

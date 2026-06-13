@@ -24,7 +24,7 @@ export interface ChatManager {
   joinRoom: (roomId: string, token: string) => Promise<void>;
   leaveRoom: () => void;
   sendTextMessage: (content: string, sender: string) => boolean;
-  sendFile: (file: File, sender: string) => boolean;
+  sendFile: (file: File, sender: string) => Promise<boolean>;
   startMedia: () => Promise<void>;
   muteAudio: () => void;
   unmuteAudio: () => void;
@@ -207,8 +207,8 @@ export function createChatManager(callbacks: ChatManagerCallbacks): ChatManager 
       return webrtc.sendTextMessage(content, sender);
     },
 
-    sendFile(file: File, sender: string) {
-      return webrtc.sendFile(file, sender);
+    async sendFile(file: File, sender: string) {
+      return await webrtc.sendFile(file, sender);
     },
 
     async startMedia() {
