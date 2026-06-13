@@ -28,7 +28,6 @@ export default function Chat({ roomId }: ChatRoomProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [dataChannelReady, setDataChannelReady] = useState(false);
-  const [isCallActive, setIsCallActive] = useState(false);
   const [isAudioMuted, setIsAudioMuted] = useState(false);
   const [isVideoEnabled, setIsVideoEnabled] = useState(true);
   const [expiresAt, setExpiresAt] = useState<number | null>(null);
@@ -285,7 +284,6 @@ export default function Chat({ roomId }: ChatRoomProps) {
     }
     if (chatManagerRef.current) {
       await chatManagerRef.current.startMedia();
-      setIsCallActive(true);
     }
   };
 
@@ -377,6 +375,12 @@ export default function Chat({ roomId }: ChatRoomProps) {
 
         {/* Video Area */}
         <main className="flex-1 relative flex items-center justify-center p-4 pb-24">
+          {error && (
+            <div className="absolute top-20 left-1/2 transform -translate-x-1/2 bg-red-500/90 text-white px-6 py-3 rounded-xl shadow-2xl z-50 animate-in fade-in slide-in-from-top-4">
+              <p className="font-semibold">{error}</p>
+            </div>
+          )}
+
           {chatState === "connecting" || chatState === "idle" ? (
             <div className="flex flex-col items-center justify-center">
               <div className="w-12 h-12 border-4 border-zinc-500/30 border-t-zinc-500 rounded-full animate-spin" />
@@ -478,6 +482,13 @@ export default function Chat({ roomId }: ChatRoomProps) {
               className="p-4 rounded-full bg-red-500 hover:bg-red-600 text-white shadow-lg shadow-red-500/20 transition-all duration-200 ml-2"
             >
               <PhoneOff size={22} />
+            </button>
+            <button 
+              onClick={destroyRoom}
+              title="Destroy room for everyone"
+              className="p-4 rounded-full bg-red-950 hover:bg-red-900 border border-red-900 text-red-200 shadow-lg transition-all duration-200 ml-2"
+            >
+              <Trash2 size={22} />
             </button>
           </div>
 

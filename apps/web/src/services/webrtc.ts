@@ -361,6 +361,7 @@ export function createWebRTCService(): WebRTCService {
           audio: true,
         });
         localStream = stream;
+        
         stream.getTracks().forEach((track) => {
           if (peerConnection) {
             peerConnection.addTrack(track, stream);
