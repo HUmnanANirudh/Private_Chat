@@ -183,9 +183,6 @@ export default function Chat({ roomId }: ChatRoomProps) {
             if (state === "connected") {
               setDataChannelReady(true);
             }
-            if (state === "idle") {
-              handleRoomDestroyed();
-            }
           },
           onLocalStream: (stream) => setLocalStream(stream),
           onRemoteStream: (stream) => setRemoteStream(stream),

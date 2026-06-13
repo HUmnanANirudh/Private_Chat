@@ -85,6 +85,7 @@ export interface WebRTCService {
   onIceCandidate: ((candidate: RTCIceCandidate) => void) | null;
   onRemoteStream: ((stream: MediaStream) => void) | null;
   onConnectionStateChange: ((state: PeerConnectionState) => void) | null;
+  onSignalingStateChange: ((state: RTCSignalingState) => void) | null;
   onDataChannelMessage: ((message: DataChannelMessage) => void) | null;
   onDataChannelStateChange: ((state: string) => void) | null;
   onNegotiationNeeded: (() => void) | null;
@@ -104,6 +105,7 @@ export function createWebRTCService(): WebRTCService {
   let onIceCandidateCallback: ((candidate: RTCIceCandidate) => void) | null = null;
   let onRemoteStreamCallback: ((stream: MediaStream) => void) | null = null;
   let onConnectionStateChangeCallback: ((state: PeerConnectionState) => void) | null = null;
+  let onSignalingStateChangeCallback: ((state: RTCSignalingState) => void) | null = null;
   let onDataChannelMessageCallback: ((message: DataChannelMessage) => void) | null = null;
   let onDataChannelStateChangeCallback: ((state: string) => void) | null = null;
   let onNegotiationNeededCallback: (() => void) | null = null;
@@ -191,7 +193,7 @@ export function createWebRTCService(): WebRTCService {
     console.log("[WebRTC] Data channel setup complete, current state:", channel.readyState);
   }
 
-  return {
+  const service: WebRTCService = {
     get peerConnection() { return peerConnection; },
     get localStream() { return localStream; },
     get remoteStream() { return remoteStream; },
@@ -205,6 +207,8 @@ export function createWebRTCService(): WebRTCService {
     set onRemoteStream(cb) { onRemoteStreamCallback = cb; },
     get onConnectionStateChange() { return onConnectionStateChangeCallback; },
     set onConnectionStateChange(cb) { onConnectionStateChangeCallback = cb; },
+    get onSignalingStateChange() { return onSignalingStateChangeCallback; },
+    set onSignalingStateChange(cb) { onSignalingStateChangeCallback = cb; },
     get onDataChannelMessage() { return onDataChannelMessageCallback; },
     set onDataChannelMessage(cb) { onDataChannelMessageCallback = cb; },
     get onDataChannelStateChange() { return onDataChannelStateChangeCallback; },
@@ -237,11 +241,14 @@ export function createWebRTCService(): WebRTCService {
 
       // 5. Set up connection state handler
       peerConnection.onconnectionstatechange = () => {
-        if (peerConnection) {
-          connectionState = peerConnection.connectionState;
-          console.log("[WebRTC] >>> Connection state changed to:", connectionState);
-          onConnectionStateChangeCallback?.(connectionState);
-        }
+        console.log(`[WebRTC] >>> Connection state changed to: ${peerConnection?.connectionState}`);
+        onConnectionStateChangeCallback?.(peerConnection?.connectionState || "closed");
+      };
+
+      peerConnection.onsignalingstatechange = () => {
+        const sigState = peerConnection?.signalingState || "closed";
+        console.log("[WebRTC] Signaling state changed:", sigState);
+        onSignalingStateChangeCallback?.(sigState);
       };
 
       // 6. Set up ICE connection state handler (more reliable for data channel)
@@ -493,4 +500,6 @@ export function createWebRTCService(): WebRTCService {
       });
     },
   };
+
+  return service;
 }

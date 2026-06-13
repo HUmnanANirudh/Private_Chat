@@ -134,20 +134,39 @@ export function createChatManager(callbacks: ChatManagerCallbacks): ChatManager 
     callbacks.onRemoteStream?.(stream);
   };
 
-  webrtc.onNegotiationNeeded = async () => {
-    if (state === "connected") {
-      console.log("[ChatManager] Renegotiating connection...");
-      await startConnection();
+  let isNegotiating = false;
+  let pendingRenegotiation = false;
+
+  const tryRenegotiate = async () => {
+    if (state === "idle" || state === "waiting" || state === "connecting") return;
+    if (isNegotiating || webrtc.peerConnection?.signalingState !== "stable") {
+      pendingRenegotiation = true;
+      return;
     }
+
+    try {
+      isNegotiating = true;
+      console.log("[ChatManager] Executing renegotiation...");
+      await startConnection();
+    } finally {
+      isNegotiating = false;
+      if (pendingRenegotiation && webrtc.peerConnection?.signalingState === "stable") {
+        pendingRenegotiation = false;
+        tryRenegotiate();
+      }
+    }
+  };
+
+  webrtc.onNegotiationNeeded = async () => {
+    tryRenegotiate();
   };
 
   // Set up data channel message handler
   webrtc.onDataChannelMessage = (message) => {
-    console.log("[ChatManager] Data channel message received:", message);
     if (message.type === "text") {
       console.log("[ChatManager] Forwarding text message to UI:", message.content);
       callbacks.onTextMessage?.(message);
-    } else {
+    } else if (message.type === "file") {
       callbacks.onFileMessage?.(message);
     }
   };
@@ -156,6 +175,13 @@ export function createChatManager(callbacks: ChatManagerCallbacks): ChatManager 
     console.log("[ChatManager] Data channel state changed:", dataChannelState);
     if (dataChannelState === "open") {
       callbacks.onDataChannelOpen?.();
+    }
+  };
+
+  webrtc.onSignalingStateChange = (sigState) => {
+    if (sigState === "stable" && pendingRenegotiation) {
+      pendingRenegotiation = false;
+      tryRenegotiate();
     }
   };
 
