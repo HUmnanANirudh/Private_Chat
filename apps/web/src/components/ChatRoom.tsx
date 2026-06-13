@@ -1,4 +1,4 @@
-import { Paperclip, Share2, Trash2, Download, PhoneOff, Clock } from "lucide-react";
+import { Paperclip, Share2, Trash2, Download, Clock } from "lucide-react";
 import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import type { ChatRoomProps } from "@repo/types";
@@ -329,31 +329,36 @@ export default function Chat({ roomId }: ChatRoomProps) {
   return (
     <div className="flex flex-col h-screen w-full bg-zinc-950 text-zinc-100 overflow-hidden relative max-w-4xl mx-auto border-x border-zinc-800/50 shadow-2xl">
       {/* Header */}
-      <div className="p-5 border-b border-zinc-800/50 flex items-center justify-between bg-zinc-900/30 shrink-0">
-        <div className="flex items-center gap-3">
-          <div className="bg-zinc-900/80 backdrop-blur-md border border-zinc-800 rounded-lg px-4 py-2 flex items-center gap-3 shadow-lg">
+      <div className="p-4 sm:p-5 border-b border-zinc-800/50 flex items-center justify-between bg-zinc-900/30 shrink-0 relative">
+        {/* Left: Connection Status */}
+        <div className="flex-1 flex items-center justify-start">
+          <div className="flex items-center gap-2 bg-zinc-900/50 backdrop-blur-sm border border-zinc-800/50 rounded-lg px-3 py-1.5">
             <div className={`w-2 h-2 rounded-full ${dataChannelReady ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)] animate-pulse' : 'bg-yellow-500 shadow-[0_0_8px_rgba(234,179,8,0.6)]'}`} />
-            <span className="text-sm font-medium tracking-wide hidden sm:block">{roomId}</span>
-            <div className="w-px h-4 bg-zinc-700 mx-1 hidden sm:block" />
-            <span className={`text-xs font-semibold ${dataChannelReady ? "text-green-500" : "text-yellow-500"}`}>
-              {dataChannelReady ? "SECURE" : "WAITING FOR PEER"}
+            <span className={`text-[10px] sm:text-xs font-semibold tracking-wide ${dataChannelReady ? "text-green-500" : "text-yellow-500"}`}>
+              {dataChannelReady ? "Connected" : "Waiting for peer"}
             </span>
           </div>
-          {expiresAt && timeRemaining !== null && (
-            <div className="hidden sm:flex bg-zinc-900/80 backdrop-blur-md border border-zinc-800 rounded-lg px-4 py-2 items-center gap-2 shadow-lg">
-              <Clock size={16} className={timeRemaining < 60000 ? "text-red-500 animate-pulse" : "text-zinc-400"} />
-              <span className={`text-sm font-mono tracking-wider ${timeRemaining < 60000 ? "text-red-500 font-bold" : "text-zinc-100"}`}>
+        </div>
+
+        {/* Center: Timer */}
+        {expiresAt && timeRemaining !== null && (
+          <div className="absolute left-1/2 -translate-x-1/2 flex items-center justify-center">
+            <div className="flex items-center gap-2 bg-zinc-900/50 backdrop-blur-md border border-zinc-800/50 rounded-lg px-3 py-1.5 shadow-sm">
+              <Clock size={14} className={timeRemaining < 60000 ? "text-red-500 animate-pulse" : "text-zinc-400"} />
+              <span className={`text-xs sm:text-sm font-mono tracking-wider ${timeRemaining < 60000 ? "text-red-500 font-bold" : "text-zinc-100"}`}>
                 {formatTime(timeRemaining)}
               </span>
             </div>
-          )}
-        </div>
+          </div>
+        )}
         
-        <div className="flex items-center gap-2 sm:gap-3">
-          <button onClick={handleCopy} title="Share room link" className="p-2 sm:p-3 rounded-full bg-zinc-900 hover:bg-zinc-800 text-zinc-300 transition-colors shadow-lg border border-zinc-800">
-            <Share2 size={18} />
+        {/* Right: Actions */}
+        <div className="flex-1 flex items-center justify-end gap-2 sm:gap-4 z-10">
+          <button onClick={handleCopy} title="Share room link" className="flex items-center gap-2 px-3 py-2 sm:px-4 sm:py-2 rounded-lg bg-zinc-100 hover:bg-zinc-200 text-zinc-900 transition-colors shadow-sm font-semibold text-xs sm:text-sm">
+            <Share2 size={16} />
+            <span className="hidden sm:block">Share Link</span>
           </button>
-          <button onClick={destroyRoom} title="Destroy room for everyone" className="p-2 sm:p-3 rounded-full bg-red-950/50 hover:bg-red-900/80 border border-red-900/50 text-red-300 shadow-lg transition-colors">
+          <button onClick={destroyRoom} title="Destroy room" className="p-2 sm:p-2.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-500 transition-colors">
             <Trash2 size={18} />
           </button>
         </div>
@@ -471,9 +476,6 @@ export default function Chat({ roomId }: ChatRoomProps) {
       {showDestroyModal && (
         <div className="absolute inset-0 bg-black/80 flex items-center justify-center z-50 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-8 max-w-sm w-full mx-4 shadow-2xl flex flex-col items-center text-center transform animate-in zoom-in-95 duration-200">
-            <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mb-6">
-              <PhoneOff size={32} className="text-red-500" />
-            </div>
             <h2 className="text-2xl font-bold text-zinc-100 mb-2">Room Destroyed</h2>
             <p className="text-zinc-400 mb-8">
               This room no longer exists. Redirecting to home in <span className="text-white font-bold">{countdown}</span>...
