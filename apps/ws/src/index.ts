@@ -1,4 +1,4 @@
-import type { wsData } from "./types";
+import type { wsData } from "@repo/types";
 import {
   answerHandler,
   offerHandler,
@@ -10,16 +10,8 @@ import {
 const server = Bun.serve<wsData>({
   port: 9001,
   fetch(req, server) {
-    const cookieHeader = req.headers.get("cookie");
-    const cookieMatch = cookieHeader?.match(/x-auth-value=([^;]+)/);
-    const cookieToken = cookieMatch ? cookieMatch[1] : "";
-
-    // Extract token from query params (client passes token via ?token= since cookies aren't sent with WS upgrade)
-    const url = new URL(req.url, "http://localhost");
-    const queryToken = url.searchParams.get("token") || "";
-
-    const token = cookieToken || queryToken;
-
+    const cookieHeader = req.headers.get("cookie");1
+    const token =  cookieHeader?.split('=')[1];
     if (!token) {
       return new Response("Unauthorized", { status: 401 });
     }
@@ -71,7 +63,6 @@ const server = Bun.serve<wsData>({
     },
     close(ws) {
       if (!ws.data) return;
-
       peerDisconnectHandler(ws.data.roomId, ws.data.token);
     },
   },

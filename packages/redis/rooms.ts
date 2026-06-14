@@ -14,7 +14,7 @@ export const getRoomMeta = async (roomId: string) => {
 };
 
 export const createRoom = async (ttlminutes: number, createdToken: string) => {
-  const roomId = crypto.randomUUID().slice(0, 12);
+  const roomId = crypto.randomBytes(8).toString('base64');
   const ttlseconds = ttlminutes * 60;
   const now = Date.now();
   await Promise.all([

@@ -1,6 +1,6 @@
 import type { ServerWebSocket } from "bun";
 import { registry } from "../registry";
-import type { wsData } from "../types";
+import type { wsData } from "@repo/types";
 import { getRoomMeta, addParticipant } from "../../../../packages/redis/rooms";
 
 export const joinRoomHandler = async (ws: ServerWebSocket<wsData>, roomId: string) => {
@@ -17,14 +17,12 @@ export const joinRoomHandler = async (ws: ServerWebSocket<wsData>, roomId: strin
     return;
   }
 
-  // Auto-enroll token as participant if room has space and token isn't already enrolled
   let currentParticipants = roomData.participants;
   if (!roomData.participants.includes(token) && roomData.participants.length < 2) {
     await addParticipant(roomId, token);
-    // Re-fetch room data after adding participant
     const updatedRoomData = await getRoomMeta(roomId);
     currentParticipants = updatedRoomData.participants;
-    console.log("Auto-enrolled token:", token, "participants:", currentParticipants);
+    console.log("Participant added", token, "participants:", currentParticipants);
   }
 
   if (!currentParticipants.includes(token)) {
