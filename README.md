@@ -67,4 +67,5 @@ bun run start
 ```
 
 ---
-*Powered by Bun – A fast all-in-one JavaScript runtime.*
+
+*Powered by Bun*

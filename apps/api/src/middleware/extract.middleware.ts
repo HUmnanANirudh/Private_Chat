@@ -1,14 +1,14 @@
-import type { Request, Response,NextFunction } from "express";
+import type { Request, Response, NextFunction } from "express";
 
 export const extract = (req: Request, res: Response, next: NextFunction) => {
-    const token = req.cookies?.["x-auth-value"];
-    if (!token) {
-        return res.status(401).json({
-            message: "Unauthorized: No token provided"
-        });
-    }
+  const token = req.cookies?.["x-auth-value"];
+  if (!token) {
+    return res.status(401).json({
+      message: "Unauthorized: No token provided",
+    });
+  }
 
-    req.participantToken = token;
+  req.participantToken = token;
 
-    next();
-}
+  next();
+};
