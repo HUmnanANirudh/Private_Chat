@@ -1,5 +1,5 @@
 import type { GeneralErrorModalProps } from "@repo/types";
-import ChatBackgroundMock from "./ChatBackgroundMock";
+import ChatBackgroundMock from "../chat/ChatBackgroundMock";
 import OverlayModal from "./OverlayModal";
 
 export default function GeneralErrorModal({ message = "Something went wrong." }: GeneralErrorModalProps) {

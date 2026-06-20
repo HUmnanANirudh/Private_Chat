@@ -103,3 +103,58 @@ export interface ChatManager {
   sendTextMessage: (content: string, sender: string) => boolean;
   sendFile: (file: File, sender: string) => Promise<boolean>;
 }
+
+export interface ChatHeaderProps {
+  dataChannelReady: boolean;
+  expiresAt: number | null;
+  timeRemaining: number | null;
+  formatTime: (ms: number) => string;
+  handleCopy: () => void;
+  destroyRoom: () => void;
+}
+
+export interface MessageListProps {
+  messages: Message[];
+  dataChannelReady: boolean;
+  chatState: ChatManagerState;
+  messagesEndRef: { readonly current: HTMLDivElement | null } | any;
+}
+
+export interface ChatInputProps {
+  input: string;
+  setInput: (value: string) => void;
+  dataChannelReady: boolean;
+  fileInputRef: { readonly current: HTMLInputElement | null } | any;
+  handleFileChange: (e: any) => void;
+  handleSendMessage: () => void;
+}
+
+export interface UseChatManagerConnectionProps {
+  roomId: string;
+  username: string;
+  isVerifying: boolean;
+  ensureToken: () => Promise<string | null>;
+  handleRoomDestroyed: () => void;
+  setMessages: (update: Message[] | ((prev: Message[]) => Message[])) => void;
+}
+
+export interface UseSendFileProps {
+  username: string;
+  chatManagerRef: { readonly current: ChatManager | null } | any;
+  setMessages: (update: Message[] | ((prev: Message[]) => Message[])) => void;
+}
+
+export interface UseSendTextMessageProps {
+  username: string;
+  input: string;
+  setInput: (value: string) => void;
+  chatManagerRef: { readonly current: ChatManager | null } | any;
+  setMessages: (update: Message[] | ((prev: Message[]) => Message[])) => void;
+}
+
+export interface UseDestroyRoomProps {
+  roomId: string;
+  chatManagerRef: { readonly current: ChatManager | null } | any;
+  handleRoomDestroyed: () => void;
+}
+

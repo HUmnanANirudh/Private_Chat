@@ -3,45 +3,11 @@ import { RefreshCcw } from "lucide-react";
 import RoomActions from "./RoomActions";
 import type { IdentityCardProps } from "@repo/types";
 
-const Names = [
-  "Aether",
-  "Nyx",
-  "Orion",
-  "Loki",
-  "Zephyr",
-  "Atlas",
-  "Fenrir",
-  "Kairo",
-  "Raven",
-  "Onyx",
-  "Valkyrie",
-  "Draco",
-  "Sable",
-  "Echo",
-  "Cosmo",
-  "Artemis",
-  "Wolfgang",
-  "Storm",
-  "Leon",
-  "Nova",
-  "Hades",
-  "Kitsune",
-  "Shadow",
-  "Blaze",
-  "Falcon",
-  "Zorro",
-  "Titan",
-  "Luna",
-  "Solaris",
-  "Terra",
-  "Aqua",
-  "Ignis",
-  "Aeris"
-];
+import { Names } from "../constants/names";
 
 const usernameGenerator = () => {
   const name = Names[Math.floor(Math.random() * Names.length)];
-  const id = crypto.randomUUID().slice(0, 6);
+  const id = crypto.randomUUID().slice(0, 8);
   return `${name}_${id}`;
 };
 
