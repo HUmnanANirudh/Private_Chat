@@ -1,37 +1,19 @@
-interface offerMessage {
-    type: "offer";
-    roomId: string;
-    sdp: RTCSessionDescriptionInit;
-}
+export type SignalingMessage =
+  | { type: "join_room"; roomId: string; token: string }
+  | { type: "offer"; offer: RTCSessionDescriptionInit; to: string }
+  | { type: "answer"; answer: RTCSessionDescriptionInit; to: string }
+  | { type: "ice-candidate"; candidate: RTCIceCandidateInit; to: string }
+  | { type: "peer-disconnect"; roomId: string; token: string };
 
-interface answerMessage {
-    type: "answer";
-    roomId: string;
-    sdp: RTCSessionDescriptionInit;
-}
-
-interface iceCandidateMessage {
-    type: "ice-candidate";
-    roomId: string;
-    candidate: RTCIceCandidateInit;
-}
-
-interface peerJoinedMessage {
-    type: "peer-joined";
-}
-
-interface peerDisconnectedMessage {
-    type: "peer-disconnected";
-}
-
-export type WSMessage =
-    | offerMessage
-    | answerMessage
-    | iceCandidateMessage
-    | peerJoinedMessage
-    | peerDisconnectedMessage;
+export type IncomingSignalingMessage =
+  | { type: "ready"; initiator?: boolean }
+  | { type: "offer"; data: RTCSessionDescriptionInit; from: string }
+  | { type: "answer"; data: RTCSessionDescriptionInit; from: string }
+  | { type: "ice-candidate"; data: RTCIceCandidateInit; from: string }
+  | { type: "peer-disconnect"; from: string }
+  | { type: "error"; message: string };
 
 export interface wsData {
-    roomId: string;
-    token: string;
+  roomId: string;
+  token: string;
 }

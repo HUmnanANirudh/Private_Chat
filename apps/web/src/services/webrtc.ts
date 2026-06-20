@@ -7,75 +7,14 @@ const ICE_SERVERS = [
   { urls: "stun:stun.nextcloud.com:3478" }
 ];
 
-export type PeerConnectionState = "new" | "connecting" | "connected" | "disconnected" | "failed" | "closed";
-
-// Data channel message types
-export type DataChannelMessageType = "text" | "file";
-
-export interface TextMessage {
-  type: "text";
-  id: string;
-  content: string;
-  sender: string;
-  timestamp: number;
-}
-
-export interface FileMessage {
-  type: "file";
-  id: string;
-  name: string;
-  size: number;
-  mimeType: string;
-  data: string; // base64 encoded
-  sender: string;
-  timestamp: number;
-}
-
-export interface FileChunkMessage {
-  type: "file-chunk";
-  id: string;
-  chunkIndex: number;
-  totalChunks: number;
-  data: string;
-  name: string;
-  size: number;
-  mimeType: string;
-  sender: string;
-  timestamp: number;
-}
-
-export type DataChannelMessage = TextMessage | FileMessage | FileChunkMessage;
-
-export interface WebRTCService {
-  // Connection state
-  peerConnection: RTCPeerConnection | null;
-  connectionState: PeerConnectionState;
-  dataChannel: RTCDataChannel | null;
-  dataChannelState: string;
-
-  // Initialization
-  initialize: () => Promise<void>;
-  cleanup: () => void;
-
-  // Signaling helpers
-  createOffer: () => Promise<RTCSessionDescriptionInit>;
-  createAnswer: (offer: RTCSessionDescriptionInit) => Promise<RTCSessionDescriptionInit>;
-  addIceCandidate: (candidate: RTCIceCandidateInit) => Promise<void>;
-
-  // Data channel
-  sendTextMessage: (content: string, sender: string) => boolean;
-  sendFile: (file: File, sender: string) => Promise<boolean>;
-  createDataChannel: (label: string) => RTCDataChannel;
-
-  // Event callbacks
-  onIceCandidate: ((candidate: RTCIceCandidate) => void) | null;
-  onConnectionStateChange: ((state: PeerConnectionState) => void) | null;
-  onSignalingStateChange: ((state: RTCSignalingState) => void) | null;
-  onDataChannelMessage: ((message: DataChannelMessage) => void) | null;
-  onDataChannelStateChange: ((state: string) => void) | null;
-  onNegotiationNeeded: (() => void) | null;
-  resetConnection: () => void;
-}
+import type { 
+  PeerConnectionState,
+  TextMessage,
+  FileMessage,
+  FileChunkMessage,
+  DataChannelMessage,
+  WebRTCService
+} from "@repo/types";
 
 export function createWebRTCService(): WebRTCService {
   let peerConnection: RTCPeerConnection | null = null;

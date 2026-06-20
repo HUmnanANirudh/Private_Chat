@@ -1,22 +1,8 @@
 import { Paperclip, Share2, Trash2, Download, Clock } from "lucide-react";
 import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import type { ChatRoomProps } from "@repo/types";
+import type { ChatRoomProps, Message, ChatManagerState, TextMessage, FileMessage } from "@repo/types";
 import { createChatManager } from "../services/index";
-import type { ChatManagerState, TextMessage, FileMessage } from "../services/index";
-
-interface Message {
-  id: string;
-  content: string;
-  sender: string;
-  timestamp: number;
-  isOwn: boolean;
-  isFile?: boolean;
-  isSending?: boolean;
-  fileData?: string;
-  fileName?: string;
-  mimeType?: string;
-}
 
 export default function Chat({ roomId }: ChatRoomProps) {
   const navigate = useNavigate();

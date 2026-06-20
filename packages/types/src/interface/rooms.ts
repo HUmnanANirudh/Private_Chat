@@ -25,9 +25,7 @@ export interface RoomActionsProps {
   room?: string;
 }
 
-export interface ChatManagerState {
-  type: "idle" | "connecting" | "waiting" | "connecting-to-peer" | "connected" | "disconnected";
-}
+export type ChatManagerState = "idle" | "connecting" | "waiting" | "connecting-to-peer" | "connected" | "disconnected";
 
 export interface TextMessage {
   type: "text";

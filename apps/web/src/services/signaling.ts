@@ -1,42 +1,12 @@
 // Signaling Service - Connects WebRTC to WebSocket server
 // Handles the signaling phase: exchanging offers/answers/ICE candidates
 
-export type SignalingMessage =
-  | { type: "join_room"; roomId: string; token: string }
-  | { type: "offer"; offer: RTCSessionDescriptionInit; to: string }
-  | { type: "answer"; answer: RTCSessionDescriptionInit; to: string }
-  | { type: "ice-candidate"; candidate: RTCIceCandidateInit; to: string }
-  | { type: "peer-disconnect"; roomId: string; token: string };
-
-export type IncomingSignalingMessage =
-  | { type: "ready"; initiator?: boolean }
-  | { type: "offer"; data: RTCSessionDescriptionInit; from: string }
-  | { type: "answer"; data: RTCSessionDescriptionInit; from: string }
-  | { type: "ice-candidate"; data: RTCIceCandidateInit; from: string }
-  | { type: "peer-disconnect"; from: string }
-  | { type: "error"; message: string };
-
-export interface SignalingCallbacks {
-  onPeerJoined?: (data: { token: string }) => void;
-  onReady?: (isInitiator: boolean) => void;
-  onOffer?: (data: { offer: RTCSessionDescriptionInit; from: string }) => void;
-  onAnswer?: (data: { answer: RTCSessionDescriptionInit; from: string }) => void;
-  onIceCandidate?: (data: { candidate: RTCIceCandidateInit; from: string }) => void;
-  onPeerDisconnected?: (data: { token: string }) => void;
-  onError?: (error: string) => void;
-}
-
-export interface SignalingService {
-  isConnected: boolean;
-
-  connect: (roomId: string, token: string) => void;
-  disconnect: () => void;
-
-  sendOffer: (offer: RTCSessionDescriptionInit, to: string) => void;
-  sendAnswer: (answer: RTCSessionDescriptionInit, to: string) => void;
-  sendIceCandidate: (candidate: RTCIceCandidateInit, to: string) => void;
-  sendPeerDisconnect: (roomId: string, token: string) => void;
-}
+import type { 
+  SignalingMessage, 
+  IncomingSignalingMessage, 
+  SignalingCallbacks, 
+  SignalingService 
+} from "@repo/types";
 
 export function createSignalingService(callbacks: SignalingCallbacks): SignalingService {
   let ws: WebSocket | null = null;

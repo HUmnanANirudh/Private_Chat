@@ -1,29 +1,10 @@
 import { createWebRTCService } from "./webrtc";
-import type { WebRTCService, TextMessage, FileMessage } from "./webrtc";
 import { createSignalingService } from "./signaling";
-import type { SignalingService } from "./signaling";
-
-export type ChatManagerState = "idle" | "connecting" | "waiting" | "connecting-to-peer" | "connected" | "disconnected";
-
-export interface ChatManagerCallbacks {
-  onStateChange?: (state: ChatManagerState) => void;
-  onError?: (error: string) => void;
-  onPeerDisconnected?: () => void;
-  onTextMessage?: (message: TextMessage) => void;
-  onFileMessage?: (message: FileMessage) => void;
-  onDataChannelOpen?: () => void;
-}
-
-export interface ChatManager {
-  state: ChatManagerState;
-  webrtc: WebRTCService;
-  signaling: SignalingService;
-
-  joinRoom: (roomId: string, token: string) => Promise<void>;
-  leaveRoom: () => void;
-  sendTextMessage: (content: string, sender: string) => boolean;
-  sendFile: (file: File, sender: string) => Promise<boolean>;
-}
+import type { 
+  ChatManagerState, 
+  ChatManagerCallbacks, 
+  ChatManager, 
+} from "@repo/types";
 
 export function createChatManager(callbacks: ChatManagerCallbacks): ChatManager {
   const webrtc = createWebRTCService();
