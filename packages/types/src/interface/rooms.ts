@@ -45,3 +45,19 @@ export interface FileMessage {
   sender: string;
   timestamp: number;
 }
+
+export interface OverlayModalProps {
+  title: string;
+  description?: string;
+  redirectTo?: string;
+  seconds?: number;
+}
+
+export interface RoomDestroyedOverlayProps {
+  isOpen: boolean;
+}
+
+export interface GeneralErrorModalProps {
+  message?: string;
+}
+

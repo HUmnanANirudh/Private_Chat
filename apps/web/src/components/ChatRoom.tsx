@@ -2,7 +2,8 @@ import { Paperclip, Share2, Trash2, Download, Clock } from "lucide-react";
 import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import type { ChatRoomProps, Message, ChatManagerState, TextMessage, FileMessage } from "@repo/types";
-import { createChatManager } from "../services/index";
+import { createChatManager } from "../services/chatManger";
+import OverlayModal from "./OverlayModal";
 
 export default function Chat({ roomId }: ChatRoomProps) {
   const navigate = useNavigate();
@@ -14,16 +15,11 @@ export default function Chat({ roomId }: ChatRoomProps) {
   const [expiresAt, setExpiresAt] = useState<number | null>(null);
   const [timeRemaining, setTimeRemaining] = useState<number | null>(null);
   const [showDestroyModal, setShowDestroyModal] = useState(false);
-  const [countdown, setCountdown] = useState(3);
-  const [redirectCountdown, setRedirectCountdown] = useState<number | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const pendingMessagesRef = useRef<string[]>([]);
   const chatManagerRef = useRef<ReturnType<typeof createChatManager> | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  
-  const showModalRef = useRef(false);
-  const destroyIntervalRef = useRef<NodeJS.Timeout | number | null>(null);
 
   const [username, setUsername] = useState("Peer");
 
@@ -48,46 +44,9 @@ export default function Chat({ roomId }: ChatRoomProps) {
     }, 1000);
     return () => clearInterval(interval);
   }, [expiresAt]);
-  // Redirect Countdown effect
-  useEffect(() => {
-    if (error === "Room is full") {
-      setRedirectCountdown(10);
-    }
-  }, [error]);
-
-  useEffect(() => {
-    if (redirectCountdown === null) return;
-    if (redirectCountdown <= 0) {
-      navigate({ to: "/" });
-      return;
-    }
-    const timer = setTimeout(() => {
-      setRedirectCountdown((prev) => (prev !== null ? prev - 1 : null));
-    }, 1000);
-    return () => clearTimeout(timer);
-  }, [redirectCountdown, navigate]);
 
   const handleRoomDestroyed = () => {
-    if (showModalRef.current) return;
-    showModalRef.current = true;
     setShowDestroyModal(true);
-    let count = 5;
-    setCountdown(count);
-    
-    if (destroyIntervalRef.current) {
-      clearInterval(destroyIntervalRef.current);
-    }
-    
-    destroyIntervalRef.current = setInterval(() => {
-      count -= 1;
-      setCountdown(count);
-      if (count <= 0) {
-        if (destroyIntervalRef.current) {
-          clearInterval(destroyIntervalRef.current);
-        }
-        navigate({ to: "/" });
-      }
-    }, 1000);
   };
 
   const formatTime = (ms: number) => {
@@ -180,9 +139,9 @@ export default function Chat({ roomId }: ChatRoomProps) {
         if (!roomRes.ok) {
           console.error("[Chat] Room fetch failed", roomRes.status);
           if (roomRes.status === 404) {
-            setError("No such room exists");
+            navigate({ to: "/error/room-not-found" });
           } else {
-            setError("Failed to fetch room details");
+            navigate({ to: "/error/general" });
           }
           return;
         }
@@ -197,7 +156,7 @@ export default function Chat({ roomId }: ChatRoomProps) {
           token = await ensureToken();
         } catch (e) {
           if (e instanceof Error && e.message === "Room is full") {
-            setError("Room is full");
+            navigate({ to: "/error/room-full" });
             return;
           }
         }
@@ -212,7 +171,9 @@ export default function Chat({ roomId }: ChatRoomProps) {
               setDataChannelReady(true);
             }
           },
-          onError: (err: string) => setError(err),
+          onError: (err: string) => {
+            console.error("[Chat] ChatManager error:", err);
+          },
           onPeerDisconnected: () => {
             setDataChannelReady(false);
             // Verify if room was actually destroyed
@@ -260,7 +221,7 @@ export default function Chat({ roomId }: ChatRoomProps) {
         chatManagerRef.current = chatManager;
         chatManager.joinRoom(roomId, token).catch((err: unknown) => {
           console.error("[Chat] Failed to join room:", err);
-          setError("Failed to join room");
+          navigate({ to: "/error/general" });
         });
 
         return () => {
@@ -268,7 +229,7 @@ export default function Chat({ roomId }: ChatRoomProps) {
         };
       } catch (err) {
         console.error("[Chat] Init error:", err);
-        setError("Failed to initialize");
+        navigate({ to: "/error/general" });
       }
     };
 
@@ -276,9 +237,6 @@ export default function Chat({ roomId }: ChatRoomProps) {
 
     return () => {
       isMounted = false;
-      if (destroyIntervalRef.current) {
-        clearInterval(destroyIntervalRef.current);
-      }
     };
   }, [roomId, navigate]);
 
@@ -374,67 +332,6 @@ export default function Chat({ roomId }: ChatRoomProps) {
 
   return (
     <div className="flex flex-col h-screen w-full bg-zinc-950 text-zinc-100 overflow-hidden relative max-w-4xl mx-auto border-x border-zinc-800/50 shadow-2xl">
-      {error === "Room is full" && (
-        <div className="absolute inset-0 bg-zinc-950/80 backdrop-blur-md flex items-center justify-center z-50 p-4 animate-in fade-in duration-300">
-          <div className="bg-zinc-900 border border-zinc-800 rounded-2xl max-w-md w-full p-6 sm:p-8 text-center shadow-2xl relative overflow-hidden flex flex-col items-center">
-            {/* Ambient background glow */}
-            <div className="absolute -top-10 left-1/2 -translate-x-1/2 w-40 h-40 bg-red-500/10 rounded-full blur-3xl pointer-events-none" />
-            
-            {/* Warning icon */}
-            <div className="w-14 h-14 rounded-full bg-red-500/10 border border-red-500/20 flex items-center justify-center text-red-500 mb-5 animate-pulse">
-              <svg className="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-              </svg>
-            </div>
-            
-            <h2 className="text-xl sm:text-2xl font-bold text-zinc-100 tracking-tight mb-3">Room is Full</h2>
-            <p className="text-sm text-zinc-400 leading-relaxed mb-6">
-              This private chat room has reached its maximum capacity of 2 participants. You cannot join this room at the moment.
-            </p>
-            
-            {/* Progress/Timer indicator */}
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-zinc-800 text-zinc-300 text-xs font-semibold mb-6 border border-zinc-700/50">
-              <span className="w-2 h-2 rounded-full bg-red-500 animate-ping" />
-              Redirecting to Lobby in {redirectCountdown}s
-            </div>
-            
-            <button
-              onClick={() => navigate({ to: "/" })}
-              className="w-full py-3 px-4 rounded-xl bg-zinc-100 hover:bg-white text-zinc-950 font-bold transition-all shadow-lg hover:shadow-white/5 active:scale-[0.98]"
-            >
-              Go to Home
-            </button>
-          </div>
-        </div>
-      )}
-
-      {(error === "No such room exists" || error === "Room not found") && (
-        <div className="absolute inset-0 bg-zinc-950 flex flex-col items-center justify-center p-4 z-50 animate-in fade-in duration-300">
-          <div className="bg-zinc-900 border border-zinc-800 rounded-2xl max-w-md w-full p-8 text-center shadow-2xl relative overflow-hidden flex flex-col items-center">
-            {/* Ambient background glow */}
-            <div className="absolute -top-10 left-1/2 -translate-x-1/2 w-40 h-40 bg-zinc-100/5 rounded-full blur-3xl pointer-events-none" />
-            
-            {/* Question mark/Search icon */}
-            <div className="w-14 h-14 rounded-full bg-zinc-850 border border-zinc-850 flex items-center justify-center text-zinc-400 mb-5">
-              <svg className="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
-            </div>
-            
-            <h2 className="text-xl sm:text-2xl font-bold text-zinc-100 mb-2">No Such Room Exists</h2>
-            <p className="text-sm text-zinc-400 leading-relaxed mb-8">
-              The chat room link you followed is invalid, or the room has expired and been destroyed.
-            </p>
-            
-            <button
-              onClick={() => navigate({ to: "/" })}
-              className="w-full py-3 bg-zinc-100 hover:bg-white text-zinc-950 font-bold rounded-xl transition-all shadow-lg hover:shadow-white/5 active:scale-[0.98]"
-            >
-              Go to Home
-            </button>
-          </div>
-        </div>
-      )}
       {/* Header */}
       <div className="p-4 sm:p-5 border-b border-zinc-800/50 flex items-center justify-between bg-zinc-900/30 shrink-0 relative">
         {/* Left: Connection Status */}
@@ -471,7 +368,7 @@ export default function Chat({ roomId }: ChatRoomProps) {
         </div>
       </div>
 
-      {error && error !== "Room is full" && error !== "No such room exists" && error !== "Room not found" && (
+      {error && (
         <div className="absolute top-20 left-1/2 transform -translate-x-1/2 bg-red-500/90 text-white px-6 py-3 rounded-xl shadow-2xl z-50 animate-in fade-in slide-in-from-top-4">
           <p className="font-semibold">{error}</p>
         </div>
@@ -605,37 +502,14 @@ export default function Chat({ roomId }: ChatRoomProps) {
         </div>
       </div>
 
-      {/* Room Destroyed Modal */}
+      {/* Room Destroyed Overlay */}
       {showDestroyModal && (
-        <div className="absolute inset-0 bg-zinc-950/80 flex items-center justify-center z-50 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 sm:p-8 max-w-sm w-full mx-4 shadow-2xl flex flex-col items-center text-center transform animate-in zoom-in-95 duration-200 relative overflow-hidden">
-            {/* Ambient background glow */}
-            <div className="absolute -top-10 left-1/2 -translate-x-1/2 w-40 h-40 bg-red-500/10 rounded-full blur-3xl pointer-events-none" />
-            
-            {/* Trash icon */}
-            <div className="w-14 h-14 rounded-full bg-red-500/10 border border-red-500/20 flex items-center justify-center text-red-500 mb-5 animate-pulse">
-              <svg className="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-              </svg>
-            </div>
-
-            <h2 className="text-2xl font-bold text-zinc-100 mb-2">Room Destroyed</h2>
-            <p className="text-zinc-400 mb-6 text-sm leading-relaxed">
-              This room no longer exists. Redirecting to home in <span className="text-white font-bold">{countdown}</span>...
-            </p>
-            <button
-              onClick={() => {
-                if (destroyIntervalRef.current) {
-                  clearInterval(destroyIntervalRef.current);
-                }
-                navigate({ to: "/" });
-              }}
-              className="w-full py-3 bg-zinc-100 hover:bg-white text-zinc-950 font-bold rounded-xl transition-all shadow-lg hover:shadow-white/5 active:scale-[0.98]"
-            >
-              Redirect Now
-            </button>
-          </div>
-        </div>
+        <OverlayModal
+          title="Room Destroyed"
+          description="This room no longer exists. Redirecting to home..."
+          redirectTo="/"
+          seconds={5}
+        />
       )}
     </div>
   );

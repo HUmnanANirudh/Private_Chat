@@ -1,17 +1,13 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
+import type { OverlayModalProps } from "@repo/types";
 
 export default function OverlayModal({
   title,
   description,
   redirectTo = "/",
   seconds = 10,
-}: {
-  title: string;
-  description?: string;
-  redirectTo?: string;
-  seconds?: number;
-}) {
+}: OverlayModalProps) {
   const navigate = useNavigate();
   const [timeLeft, setTimeLeft] = useState(seconds);
 

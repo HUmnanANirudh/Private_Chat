@@ -14,6 +14,11 @@ import { Route as rootRouteImport } from './routes/__root'
 
 const IndexLazyRouteImport = createFileRoute('/')()
 const RoomRoomIdLazyRouteImport = createFileRoute('/room/$roomId')()
+const ErrorRoomNotFoundLazyRouteImport = createFileRoute(
+  '/error/room-not-found',
+)()
+const ErrorRoomFullLazyRouteImport = createFileRoute('/error/room-full')()
+const ErrorGeneralLazyRouteImport = createFileRoute('/error/general')()
 
 const IndexLazyRoute = IndexLazyRouteImport.update({
   id: '/',
@@ -25,30 +30,77 @@ const RoomRoomIdLazyRoute = RoomRoomIdLazyRouteImport.update({
   path: '/room/$roomId',
   getParentRoute: () => rootRouteImport,
 } as any).lazy(() => import('./routes/room.$roomId.lazy').then((d) => d.Route))
+const ErrorRoomNotFoundLazyRoute = ErrorRoomNotFoundLazyRouteImport.update({
+  id: '/error/room-not-found',
+  path: '/error/room-not-found',
+  getParentRoute: () => rootRouteImport,
+} as any).lazy(() =>
+  import('./routes/error/room-not-found.lazy').then((d) => d.Route),
+)
+const ErrorRoomFullLazyRoute = ErrorRoomFullLazyRouteImport.update({
+  id: '/error/room-full',
+  path: '/error/room-full',
+  getParentRoute: () => rootRouteImport,
+} as any).lazy(() =>
+  import('./routes/error/room-full.lazy').then((d) => d.Route),
+)
+const ErrorGeneralLazyRoute = ErrorGeneralLazyRouteImport.update({
+  id: '/error/general',
+  path: '/error/general',
+  getParentRoute: () => rootRouteImport,
+} as any).lazy(() => import('./routes/error/general.lazy').then((d) => d.Route))
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexLazyRoute
+  '/error/general': typeof ErrorGeneralLazyRoute
+  '/error/room-full': typeof ErrorRoomFullLazyRoute
+  '/error/room-not-found': typeof ErrorRoomNotFoundLazyRoute
   '/room/$roomId': typeof RoomRoomIdLazyRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexLazyRoute
+  '/error/general': typeof ErrorGeneralLazyRoute
+  '/error/room-full': typeof ErrorRoomFullLazyRoute
+  '/error/room-not-found': typeof ErrorRoomNotFoundLazyRoute
   '/room/$roomId': typeof RoomRoomIdLazyRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexLazyRoute
+  '/error/general': typeof ErrorGeneralLazyRoute
+  '/error/room-full': typeof ErrorRoomFullLazyRoute
+  '/error/room-not-found': typeof ErrorRoomNotFoundLazyRoute
   '/room/$roomId': typeof RoomRoomIdLazyRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/room/$roomId'
+  fullPaths:
+    | '/'
+    | '/error/general'
+    | '/error/room-full'
+    | '/error/room-not-found'
+    | '/room/$roomId'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/room/$roomId'
-  id: '__root__' | '/' | '/room/$roomId'
+  to:
+    | '/'
+    | '/error/general'
+    | '/error/room-full'
+    | '/error/room-not-found'
+    | '/room/$roomId'
+  id:
+    | '__root__'
+    | '/'
+    | '/error/general'
+    | '/error/room-full'
+    | '/error/room-not-found'
+    | '/room/$roomId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexLazyRoute: typeof IndexLazyRoute
+  ErrorGeneralLazyRoute: typeof ErrorGeneralLazyRoute
+  ErrorRoomFullLazyRoute: typeof ErrorRoomFullLazyRoute
+  ErrorRoomNotFoundLazyRoute: typeof ErrorRoomNotFoundLazyRoute
   RoomRoomIdLazyRoute: typeof RoomRoomIdLazyRoute
 }
 
@@ -68,11 +120,35 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RoomRoomIdLazyRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/error/room-not-found': {
+      id: '/error/room-not-found'
+      path: '/error/room-not-found'
+      fullPath: '/error/room-not-found'
+      preLoaderRoute: typeof ErrorRoomNotFoundLazyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/error/room-full': {
+      id: '/error/room-full'
+      path: '/error/room-full'
+      fullPath: '/error/room-full'
+      preLoaderRoute: typeof ErrorRoomFullLazyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/error/general': {
+      id: '/error/general'
+      path: '/error/general'
+      fullPath: '/error/general'
+      preLoaderRoute: typeof ErrorGeneralLazyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexLazyRoute: IndexLazyRoute,
+  ErrorGeneralLazyRoute: ErrorGeneralLazyRoute,
+  ErrorRoomFullLazyRoute: ErrorRoomFullLazyRoute,
+  ErrorRoomNotFoundLazyRoute: ErrorRoomNotFoundLazyRoute,
   RoomRoomIdLazyRoute: RoomRoomIdLazyRoute,
 }
 export const routeTree = rootRouteImport
