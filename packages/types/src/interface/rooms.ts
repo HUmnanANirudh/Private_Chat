@@ -61,4 +61,20 @@ export interface GeneralErrorModalProps {
   message?: string;
 }
 
+export interface RoomActionsIdleProps {
+  setMode: (mode: "create" | "join") => void;
+}
+
+export interface RoomActionsCreateProps {
+  oncreateRoom: (ttl: number) => void;
+  setMode: (mode: "idle") => void;
+}
+
+export interface RoomActionsJoinProps {
+  onjoinRoom: (roomId: string) => void;
+  setMode: (mode: "idle") => void;
+  initialRoomCode?: string;
+}
+
+
 
