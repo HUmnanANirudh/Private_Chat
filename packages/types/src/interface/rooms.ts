@@ -9,9 +9,7 @@ export interface LobbyProps {
   JoiningMode?: JoiningMode;
 }
 
-export interface JoiningMode {
-  type: "idle" | "create" | "join";
-}
+export type JoiningMode = "idle" | "create" | "join";
 
 export interface IdentityCardProps {
   onCreateRoom: (ttl: number) => void;

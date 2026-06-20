@@ -4,7 +4,7 @@
 // STUN servers for NAT traversal
 const ICE_SERVERS = [
   { urls: "stun:stun.l.google.com:19302" },
-  { urls: "stun:stun1.l.google.com:19302" },
+  { urls: "stun:stun.nextcloud.com:3478" }
 ];
 
 export type PeerConnectionState = "new" | "connecting" | "connected" | "disconnected" | "failed" | "closed";
@@ -127,9 +127,10 @@ export function createWebRTCService(): WebRTCService {
           // Check if complete
           let complete = true;
           for (let i = 0; i < chunkMsg.totalChunks; i++) {
-            if (buffer[i] === undefined) { 
-              complete = false; 
-              break; 
+            // Check presence of the index in the array instead of comparing to undefined
+            if (!(i in buffer)) {
+              complete = false;
+              break;
             }
           }
 

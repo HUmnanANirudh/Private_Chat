@@ -2,8 +2,8 @@ import { Paperclip, Share2, Trash2, Download, Clock } from "lucide-react";
 import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import type { ChatRoomProps } from "@repo/types";
-import { createChatManager } from "../services";
-import type { ChatManagerState } from "../services";
+import { createChatManager } from "../services/index";
+import type { ChatManagerState, TextMessage, FileMessage } from "../services/index";
 
 interface Message {
   id: string;
@@ -12,6 +12,7 @@ interface Message {
   timestamp: number;
   isOwn: boolean;
   isFile?: boolean;
+  isSending?: boolean;
   fileData?: string;
   fileName?: string;
   mimeType?: string;
@@ -35,6 +36,16 @@ export default function Chat({ roomId }: ChatRoomProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   
   const showModalRef = useRef(false);
+
+  const [username, setUsername] = useState("Peer");
+
+  // Load username
+  useEffect(() => {
+    const stored = localStorage.getItem("username");
+    if (stored) {
+      setUsername(stored);
+    }
+  }, []);
 
   // Timer effect
   useEffect(() => {
@@ -90,11 +101,11 @@ export default function Chat({ roomId }: ChatRoomProps) {
     if (dataChannelReady && pendingMessagesRef.current.length > 0) {
       console.log("[Chat] Flushing", pendingMessagesRef.current.length, "pending messages");
       pendingMessagesRef.current.forEach((content) => {
-        chatManagerRef.current?.sendTextMessage(content, "You");
+        chatManagerRef.current?.sendTextMessage(content, username);
       });
       pendingMessagesRef.current = [];
     }
-  }, [dataChannelReady]);
+  }, [dataChannelReady, username]);
 
   const ensureToken = async (): Promise<string | null> => {
     const urlParams = new URLSearchParams(window.location.search);
@@ -167,13 +178,13 @@ export default function Chat({ roomId }: ChatRoomProps) {
         if (!isMounted) return;
 
         const chatManager = createChatManager({
-          onStateChange: (state) => {
+          onStateChange: (state: ChatManagerState) => {
             setChatState(state);
             if (state === "connected") {
               setDataChannelReady(true);
             }
           },
-          onError: (err) => setError(err),
+          onError: (err: string) => setError(err),
           onPeerDisconnected: () => {
             setDataChannelReady(false);
             // Verify if room was actually destroyed
@@ -188,7 +199,7 @@ export default function Chat({ roomId }: ChatRoomProps) {
             console.log("[Chat] Data channel open!");
             setDataChannelReady(true);
           },
-          onTextMessage: (message) => {
+          onTextMessage: (message: TextMessage) => {
             setMessages((prev) => [
               ...prev,
               {
@@ -200,7 +211,7 @@ export default function Chat({ roomId }: ChatRoomProps) {
               },
             ]);
           },
-          onFileMessage: (message) => {
+          onFileMessage: (message: FileMessage) => {
             setMessages((prev) => [
               ...prev,
               {
@@ -219,7 +230,7 @@ export default function Chat({ roomId }: ChatRoomProps) {
         });
 
         chatManagerRef.current = chatManager;
-        chatManager.joinRoom(roomId, token).catch((err) => {
+        chatManager.joinRoom(roomId, token).catch((err: unknown) => {
           console.error("[Chat] Failed to join room:", err);
           setError("Failed to join room");
         });
@@ -275,10 +286,12 @@ export default function Chat({ roomId }: ChatRoomProps) {
           timestamp: Date.now(),
           isOwn: true,
           isFile: false,
+          isSending: true,
+          fileName: file.name,
         },
       ]);
 
-      const success = await chatManagerRef.current.sendFile(file, "You");
+      const success = await chatManagerRef.current.sendFile(file, username);
       
       if (success) {
         setMessages((prev) => prev.map(msg => 
@@ -286,6 +299,7 @@ export default function Chat({ roomId }: ChatRoomProps) {
             ...msg,
             content: `Sent file: ${file.name}`,
             isFile: true,
+            isSending: false,
             fileName: file.name,
           } : msg
         ));
@@ -294,6 +308,7 @@ export default function Chat({ roomId }: ChatRoomProps) {
           msg.id === messageId ? {
             ...msg,
             content: `Failed to send file: ${file.name}`,
+            isSending: false,
           } : msg
         ));
       }
@@ -319,7 +334,7 @@ export default function Chat({ roomId }: ChatRoomProps) {
     setInput("");
 
     // Try to send via WebRTC if ready, otherwise queue
-    const sent = chatManagerRef.current.sendTextMessage(content, "You");
+    const sent = chatManagerRef.current.sendTextMessage(content, username);
     if (!sent) {
       console.log("[Chat] Data channel not ready, queueing message");
       pendingMessagesRef.current.push(content);
@@ -404,7 +419,30 @@ export default function Chat({ roomId }: ChatRoomProps) {
                   {!msg.isOwn && (
                     <p className="text-xs text-zinc-400 mb-1.5 font-medium tracking-wide">{msg.sender}</p>
                   )}
-                  <p className="break-words whitespace-pre-wrap overflow-hidden leading-relaxed">{msg.content}</p>
+                  {msg.isSending ? (
+                    <div className="flex items-center gap-3 py-1">
+                      <div className="relative flex items-center justify-center">
+                        <div className={`w-5 h-5 rounded-full border-2 animate-spin ${
+                          msg.isOwn ? 'border-zinc-300 border-t-zinc-950' : 'border-zinc-700 border-t-zinc-200'
+                        }`} />
+                        <Paperclip size={10} className={msg.isOwn ? 'absolute text-zinc-800' : 'absolute text-zinc-300'} />
+                      </div>
+                      <div className="flex flex-col">
+                        <span className={`font-semibold text-xs tracking-wide ${
+                          msg.isOwn ? 'text-zinc-900' : 'text-zinc-100'
+                        }`}>
+                          Sending file...
+                        </span>
+                        <span className={`text-[10px] truncate max-w-[180px] font-medium mt-0.5 ${
+                          msg.isOwn ? 'text-zinc-600' : 'text-zinc-400'
+                        }`}>
+                          {msg.fileName}
+                        </span>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="break-words whitespace-pre-wrap overflow-hidden leading-relaxed">{msg.content}</p>
+                  )}
                   {msg.isFile && msg.fileData && (
                     <a 
                       href={`data:${msg.mimeType || 'application/octet-stream'};base64,${msg.fileData}`} 

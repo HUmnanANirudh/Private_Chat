@@ -1,7 +1,7 @@
-import { createFileRoute, useNavigate } from '@tanstack/react-router'
+import { createLazyFileRoute, useNavigate } from '@tanstack/react-router'
 import Lobby from '../components/Lobby'
 
-export const Route = createFileRoute('/')({
+export const Route = createLazyFileRoute('/')({
   component: Home,
 })
 

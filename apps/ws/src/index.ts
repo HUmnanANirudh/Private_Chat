@@ -10,8 +10,8 @@ import {
 const server = Bun.serve<wsData>({
   port: 9001,
   fetch(req, server) {
-    const cookieHeader = req.headers.get("cookie");1
-    const token =  cookieHeader?.split('=')[1];
+    const cookieHeader = req.headers.get("cookie"); 1
+    const token = cookieHeader?.split('=')[1];
     if (!token) {
       return new Response("Unauthorized", { status: 401 });
     }
@@ -40,7 +40,7 @@ const server = Bun.serve<wsData>({
         console.log(data);
         switch (data.type) {
           case "join_room":
-            joinRoomHandler(ws, data.roomId);
+            joinRoomHandler(ws, data.roomId, data.token);
             break;
           case "offer":
             offerHandler(ws.data.roomId, ws.data.token, data.offer);
