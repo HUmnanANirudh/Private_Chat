@@ -9,7 +9,7 @@ export default function Chat({ roomId }: ChatRoomProps) {
   const navigate = useNavigate();
   const [input, setInput] = useState("");
   const [chatState, setChatState] = useState<ChatManagerState>("idle");
-  const [error, setError] = useState<string | null>(null);
+  const [error, _setError] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [dataChannelReady, setDataChannelReady] = useState(false);
   const [expiresAt, setExpiresAt] = useState<number | null>(null);
