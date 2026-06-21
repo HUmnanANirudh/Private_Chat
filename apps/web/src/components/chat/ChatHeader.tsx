@@ -1,5 +1,7 @@
+import { useState } from "react";
 import { Trash2, Clock, Copy, Check } from "lucide-react";
 import type { ChatHeaderProps } from "@repo/types";
+import { AlertDialog } from "../ui/alert-dialog";
 
 export default function ChatHeader({
   dataChannelReady,
@@ -10,9 +12,10 @@ export default function ChatHeader({
   isCopied,
   destroyRoom,
 }: ChatHeaderProps) {
+  const [isAlertOpen, setIsAlertOpen] = useState(false);
+
   return (
     <div className="p-4 sm:p-5 border-b border-zinc-800/50 flex items-center justify-between bg-zinc-900/30 shrink-0 relative">
-      {/* Left: Connection Status */}
       <div className="flex-1 flex items-center justify-start">
         <div className="flex items-center gap-2 bg-zinc-900/50 backdrop-blur-sm border border-zinc-800/50 rounded-lg px-3 py-1.5">
           <div
@@ -58,13 +61,23 @@ export default function ChatHeader({
           <span className="hidden sm:block">{isCopied ? "Copied!" : "Copy Link"}</span>
         </button>
         <button
-          onClick={destroyRoom}
+          onClick={() => setIsAlertOpen(true)}
           title="Destroy room"
           className="p-2 sm:p-2.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-500 transition-colors"
         >
           <Trash2 size={18} />
         </button>
       </div>
+
+      <AlertDialog
+        open={isAlertOpen}
+        onOpenChange={setIsAlertOpen}
+        title="Destroy Room"
+        description="Are you absolutely sure you want to destroy this room? This action is permanent."
+        onConfirm={destroyRoom}
+        confirmText="Yes, destroy it"
+        cancelText="Cancel"
+      />
     </div>
   );
 }

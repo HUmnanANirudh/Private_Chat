@@ -159,3 +159,12 @@ export interface UseDestroyRoomProps {
   handleRoomDestroyed: () => void;
 }
 
+export interface AlertDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  title: string;
+  description: string;
+  onConfirm: () => void;
+  confirmText?: string;
+  cancelText?: string;
+}
