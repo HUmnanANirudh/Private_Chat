@@ -1,45 +1,31 @@
-import { useState, useEffect } from "react";
 import { useNavigate } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
+import { apiClient } from "../services/apiClient";
 
 export function useVerifyRoom(roomId: string) {
   const navigate = useNavigate();
-  const [expiresAt, setExpiresAt] = useState<number | null>(null);
-  const [isVerifying, setIsVerifying] = useState(true);
 
-  useEffect(() => {
-    let isMounted = true;
-    const verify = async () => {
+  const { data, isPending: isVerifying } = useQuery({
+    queryKey: ["room", roomId],
+    queryFn: async () => {
       try {
-        const roomRes = await fetch(`/api/v1/room?roomId=${roomId}`, { credentials: "include" });
-        if (!roomRes.ok) {
-          console.error("[Chat] Room fetch failed", roomRes.status);
-          if (roomRes.status === 404) {
-            navigate({ to: "/error/room-not-found" });
-          } else {
-            navigate({ to: "/error" });
-          }
-          return;
+        const response = await apiClient.get(`/api/v1/room?roomId=${roomId}`);
+        return response.data;
+      } catch (err: any) {
+        console.error("[Chat] Room fetch failed", err);
+        if (err.response?.status === 404) {
+          navigate({ to: "/error/room-not-found" });
+        } else {
+          navigate({ to: "/error" });
         }
-
-        const data = await roomRes.json();
-        if (isMounted && data?.Data?.meta?.expiresAt) {
-          setExpiresAt(parseInt(data.Data.meta.expiresAt));
-        }
-      } catch (err) {
-        console.error("[Chat] Verification error:", err);
-        navigate({ to: "/error" });
-      } finally {
-        if (isMounted) {
-          setIsVerifying(false);
-        }
+        throw err;
       }
-    };
+    },
+    enabled: !!roomId,
+    retry: false,
+  });
 
-    verify();
-    return () => {
-      isMounted = false;
-    };
-  }, [roomId, navigate]);
+  const expiresAt = data?.Data?.meta?.expiresAt ? parseInt(data.Data.meta.expiresAt) : null;
 
   return { expiresAt, isVerifying };
 }

@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import type { ChatManagerState, TextMessage, FileMessage, UseChatManagerConnectionProps } from "@repo/types";
 import { createChatManager } from "../services/chatManger";
+import { apiClient } from "../services/apiClient";
 
 export function useChatManagerConnection({
   roomId,
@@ -46,10 +47,9 @@ export function useChatManagerConnection({
           },
           onPeerDisconnected: () => {
             setDataChannelReady(false);
-            fetch(`/api/v1/room?roomId=${roomId}`, { credentials: "include" })
-              .then((res) => {
-                if (!res.ok) handleRoomDestroyed();
-                else setChatState("waiting");
+            apiClient.get(`/api/v1/room?roomId=${roomId}`)
+              .then(() => {
+                setChatState("waiting");
               })
               .catch(() => handleRoomDestroyed());
           },

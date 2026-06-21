@@ -1,28 +1,30 @@
 import { useCallback } from "react";
+import { useMutation } from "@tanstack/react-query";
+import { apiClient } from "../services/apiClient";
 
 export function useRoomToken(roomId: string) {
+  const joinMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiClient.post("/api/v1/room/join", { roomId });
+      return res.data;
+    },
+  });
+
   const ensureToken = useCallback(async (): Promise<string | null> => {
     try {
-      const res = await fetch(`/api/v1/room/join`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ roomId }),
-        credentials: "include"
-      });
-      if (res.ok) {
-        const data = await res.json();
-        if (data.token) {
-          return data.token;
-        }
-      } else if (res.status === 403) {
+      const data = await joinMutation.mutateAsync();
+      if (data.token) {
+        return data.token;
+      }
+    } catch (e: any) {
+      console.error("[Chat] Failed to join via API", e);
+      if (e.response?.status === 403) {
         throw new Error("Room is full");
       }
-    } catch (e) {
-      console.error("[Chat] Failed to join via API", e);
       throw e;
     }
     return null;
-  }, [roomId]);
+  }, [roomId, joinMutation]);
 
   return { ensureToken };
 }
