@@ -17,6 +17,7 @@
   },
   "dependencies": {
     "@repo/types": "workspace:*",
+    "@repo/api-client": "workspace:*",
     "@tailwindcss/vite": "^4.1.18",
     "@tanstack/react-devtools": "latest",
     "@tanstack/react-query": "^5.101.0",

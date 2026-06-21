@@ -1,4 +1,4 @@
-import type { SignalingMessage } from "@repo/types";
+import { wsSignaling } from "@repo/api-client";
 
 export function sendPeerDisconnect(
   context: { ws: WebSocket | null; isConnected: boolean },
@@ -9,11 +9,6 @@ export function sendPeerDisconnect(
     console.error("[Signaling] Cannot send disconnect - not connected");
     return;
   }
-  const message: SignalingMessage = {
-    type: "peer-disconnect",
-    roomId,
-    token,
-  };
-  context.ws.send(JSON.stringify(message));
+  wsSignaling.sendPeerDisconnect(context.ws, roomId, token);
   console.log("[Signaling] Sent peer-disconnect");
 }

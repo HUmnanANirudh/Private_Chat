@@ -7,7 +7,13 @@ import { validationMiddleware } from "./middleware";
 
 const app = express();
 
-app.use(cors());
+app.use(cors({
+    origin: (origin, callback) => {
+        // Allow all origins with credentials support by reflecting the request origin
+        callback(null, true);
+    },
+    credentials: true
+}));
 app.use(cookieParser());
 app.use(express.json());
 app.use("/api/v1", validationMiddleware, router);

@@ -1,18 +1,10 @@
 import { useCallback } from "react";
-import { useMutation } from "@tanstack/react-query";
-import { apiClient } from "../services/apiClient";
+import { api } from "@repo/api-client";
 
 export function useRoomToken(roomId: string) {
-  const joinMutation = useMutation({
-    mutationFn: async () => {
-      const res = await apiClient.post("/api/v1/room/join", { roomId });
-      return res.data;
-    },
-  });
-
   const ensureToken = useCallback(async (): Promise<string | null> => {
     try {
-      const data = await joinMutation.mutateAsync();
+      const data = await api.joinRoom(roomId);
       if (data.token) {
         return data.token;
       }
@@ -24,7 +16,7 @@ export function useRoomToken(roomId: string) {
       throw e;
     }
     return null;
-  }, [roomId, joinMutation]);
+  }, [roomId]);
 
   return { ensureToken };
 }

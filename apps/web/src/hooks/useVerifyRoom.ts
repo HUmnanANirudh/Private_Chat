@@ -1,6 +1,6 @@
 import { useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { apiClient } from "../services/apiClient";
+import { api } from "@repo/api-client";
 
 export function useVerifyRoom(roomId: string) {
   const navigate = useNavigate();
@@ -9,8 +9,7 @@ export function useVerifyRoom(roomId: string) {
     queryKey: ["room", roomId],
     queryFn: async () => {
       try {
-        const response = await apiClient.get(`/api/v1/room?roomId=${roomId}`);
-        return response.data;
+        return await api.getRoom(roomId);
       } catch (err: any) {
         console.error("[Chat] Room fetch failed", err);
         if (err.response?.status === 404) {

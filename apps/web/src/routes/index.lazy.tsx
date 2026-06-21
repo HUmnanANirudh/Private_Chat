@@ -1,7 +1,7 @@
 import { createLazyFileRoute, useNavigate, useRouterState } from '@tanstack/react-router'
 import Lobby from '../components/Lobby'
 import { useMutation } from '@tanstack/react-query'
-import { apiClient } from '../services/apiClient'
+import { api } from '@repo/api-client'
 
 export const Route = createLazyFileRoute('/')({
   component: Home,
@@ -14,10 +14,7 @@ function Home() {
   const room = locationState?.room
 
   const createRoomMutation = useMutation({
-    mutationFn: async (ttl: number) => {
-      const response = await apiClient.post('/api/v1/room/create', { ttlminutes: ttl })
-      return response.data
-    },
+    mutationFn: (ttl: number) => api.createRoom(ttl),
     onSuccess: (data) => {
       console.log('Room created:', data)
       navigate({ to: '/room/$roomId', params: { roomId: data.roomId } })
@@ -28,10 +25,7 @@ function Home() {
   })
 
   const joinRoomMutation = useMutation({
-    mutationFn: async (roomId: string) => {
-      const response = await apiClient.post('/api/v1/room/join', { roomId })
-      return response.data
-    },
+    mutationFn: (roomId: string) => api.joinRoom(roomId),
     onSuccess: (data, roomId) => {
       console.log('Joined room:', data)
       navigate({ to: '/room/$roomId', params: { roomId } })

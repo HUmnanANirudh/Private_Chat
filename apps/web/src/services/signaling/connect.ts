@@ -1,25 +1,22 @@
-import type { SignalingMessage, IncomingSignalingMessage, SignalingCallbacks } from "@repo/types";
+import type { IncomingSignalingMessage, SignalingCallbacks } from "@repo/types";
+import { api, wsSignaling } from "@repo/api-client";
 
 export function connect(
   context: { ws: WebSocket | null; isConnected: boolean; callbacks: SignalingCallbacks },
   roomId: string,
   token: string
 ) {
-  console.log(`[Signaling] Connecting to ws://localhost:9001`);
+    const wsUrl = api.getWebSocketUrl(roomId, token);
+  console.log(`[Signaling] Connecting to ${wsUrl}`);
 
-  const socket = new WebSocket(`ws://localhost:9001`);
+  const socket = new WebSocket(wsUrl);
+  context.ws = socket;
 
   socket.onopen = () => {
     console.log("[Signaling] WebSocket connected");
     context.isConnected = true;
-    context.ws = socket;
 
-    const joinMessage: SignalingMessage = {
-      type: "join_room",
-      roomId,
-      token,
-    };
-    socket.send(JSON.stringify(joinMessage));
+    wsSignaling.sendJoinRoom(socket, roomId, token);
     console.log("[Signaling] Sent join_room message");
   };
 

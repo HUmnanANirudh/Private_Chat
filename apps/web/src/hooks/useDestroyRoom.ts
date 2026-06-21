@@ -1,6 +1,6 @@
 import type { UseDestroyRoomProps } from "@repo/types";
 import { useMutation } from "@tanstack/react-query";
-import { apiClient } from "../services/apiClient";
+import { api } from "@repo/api-client";
 
 export function useDestroyRoom({
   roomId,
@@ -8,11 +8,7 @@ export function useDestroyRoom({
   handleRoomDestroyed,
 }: UseDestroyRoomProps) {
   const destroyMutation = useMutation({
-    mutationFn: async () => {
-      await apiClient.delete(`/api/v1/room`, {
-        data: { roomId },
-      });
-    },
+    mutationFn: () => api.destroyRoom(roomId),
   });
 
   const destroyRoom = async () => {
