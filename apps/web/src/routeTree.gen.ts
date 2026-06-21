@@ -11,6 +11,7 @@
 import { createFileRoute } from '@tanstack/react-router'
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as RoomIndexRouteImport } from './routes/room.index'
 
 const IndexLazyRouteImport = createFileRoute('/')()
 const ErrorIndexLazyRouteImport = createFileRoute('/error/')()
@@ -30,6 +31,11 @@ const ErrorIndexLazyRoute = ErrorIndexLazyRouteImport.update({
   path: '/error/',
   getParentRoute: () => rootRouteImport,
 } as any).lazy(() => import('./routes/error/index.lazy').then((d) => d.Route))
+const RoomIndexRoute = RoomIndexRouteImport.update({
+  id: '/room/',
+  path: '/room/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const RoomRoomIdLazyRoute = RoomRoomIdLazyRouteImport.update({
   id: '/room/$roomId',
   path: '/room/$roomId',
@@ -55,6 +61,7 @@ export interface FileRoutesByFullPath {
   '/error/room-full': typeof ErrorRoomFullLazyRoute
   '/error/room-not-found': typeof ErrorRoomNotFoundLazyRoute
   '/room/$roomId': typeof RoomRoomIdLazyRoute
+  '/room/': typeof RoomIndexRoute
   '/error/': typeof ErrorIndexLazyRoute
 }
 export interface FileRoutesByTo {
@@ -62,6 +69,7 @@ export interface FileRoutesByTo {
   '/error/room-full': typeof ErrorRoomFullLazyRoute
   '/error/room-not-found': typeof ErrorRoomNotFoundLazyRoute
   '/room/$roomId': typeof RoomRoomIdLazyRoute
+  '/room': typeof RoomIndexRoute
   '/error': typeof ErrorIndexLazyRoute
 }
 export interface FileRoutesById {
@@ -70,6 +78,7 @@ export interface FileRoutesById {
   '/error/room-full': typeof ErrorRoomFullLazyRoute
   '/error/room-not-found': typeof ErrorRoomNotFoundLazyRoute
   '/room/$roomId': typeof RoomRoomIdLazyRoute
+  '/room/': typeof RoomIndexRoute
   '/error/': typeof ErrorIndexLazyRoute
 }
 export interface FileRouteTypes {
@@ -79,6 +88,7 @@ export interface FileRouteTypes {
     | '/error/room-full'
     | '/error/room-not-found'
     | '/room/$roomId'
+    | '/room/'
     | '/error/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -86,6 +96,7 @@ export interface FileRouteTypes {
     | '/error/room-full'
     | '/error/room-not-found'
     | '/room/$roomId'
+    | '/room'
     | '/error'
   id:
     | '__root__'
@@ -93,6 +104,7 @@ export interface FileRouteTypes {
     | '/error/room-full'
     | '/error/room-not-found'
     | '/room/$roomId'
+    | '/room/'
     | '/error/'
   fileRoutesById: FileRoutesById
 }
@@ -101,6 +113,7 @@ export interface RootRouteChildren {
   ErrorRoomFullLazyRoute: typeof ErrorRoomFullLazyRoute
   ErrorRoomNotFoundLazyRoute: typeof ErrorRoomNotFoundLazyRoute
   RoomRoomIdLazyRoute: typeof RoomRoomIdLazyRoute
+  RoomIndexRoute: typeof RoomIndexRoute
   ErrorIndexLazyRoute: typeof ErrorIndexLazyRoute
 }
 
@@ -118,6 +131,13 @@ declare module '@tanstack/react-router' {
       path: '/error'
       fullPath: '/error/'
       preLoaderRoute: typeof ErrorIndexLazyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/room/': {
+      id: '/room/'
+      path: '/room'
+      fullPath: '/room/'
+      preLoaderRoute: typeof RoomIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/room/$roomId': {
@@ -149,6 +169,7 @@ const rootRouteChildren: RootRouteChildren = {
   ErrorRoomFullLazyRoute: ErrorRoomFullLazyRoute,
   ErrorRoomNotFoundLazyRoute: ErrorRoomNotFoundLazyRoute,
   RoomRoomIdLazyRoute: RoomRoomIdLazyRoute,
+  RoomIndexRoute: RoomIndexRoute,
   ErrorIndexLazyRoute: ErrorIndexLazyRoute,
 }
 export const routeTree = rootRouteImport

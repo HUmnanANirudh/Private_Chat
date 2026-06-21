@@ -93,9 +93,6 @@ export function useChatManagerConnection({
           navigate({ to: "/error" });
         });
 
-        return () => {
-          chatManager.leaveRoom();
-        };
       } catch (err) {
         console.error("[Chat] connection error:", err);
         navigate({ to: "/error" });
@@ -106,6 +103,9 @@ export function useChatManagerConnection({
 
     return () => {
       isMounted = false;
+      if (chatManagerRef.current) {
+        chatManagerRef.current.leaveRoom();
+      }
     };
   }, [roomId, navigate, isVerifying, ensureToken, handleRoomDestroyed, setMessages]);
 

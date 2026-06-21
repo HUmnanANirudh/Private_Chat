@@ -1,4 +1,4 @@
-import  { useState } from "react";
+import { useState, useEffect } from "react";
 import type { RoomActionsProps, JoiningMode } from "@repo/types";
 import RoomActionsIdle from "./lobby/RoomActionsIdle";
 import RoomActionsCreate from "./lobby/RoomActionsCreate";
@@ -11,6 +11,12 @@ export default function RoomActions({
   room,
 }: RoomActionsProps) {
   const [mode, setMode] = useState<JoiningMode>(JoinMode || "idle");
+
+  useEffect(() => {
+    if (JoinMode) {
+      setMode(JoinMode);
+    }
+  }, [JoinMode]);
 
   const setModeHandler = (newMode: "idle" | "create" | "join") => {
     setMode(newMode);

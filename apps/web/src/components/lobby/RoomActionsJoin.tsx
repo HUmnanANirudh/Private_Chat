@@ -1,5 +1,5 @@
 import type { RoomActionsJoinProps } from "@repo/types";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 export default function RoomActionsJoin({
   onjoinRoom,
@@ -7,6 +7,12 @@ export default function RoomActionsJoin({
   initialRoomCode = "",
 }: RoomActionsJoinProps) {
   const [roomCode, setRoomCode] = useState(initialRoomCode);
+
+  useEffect(() => {
+    if (initialRoomCode) {
+      setRoomCode(initialRoomCode);
+    }
+  }, [initialRoomCode]);
 
   const validRoomCode = roomCode.trim().length >= 8;
 
