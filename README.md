@@ -22,6 +22,7 @@ This project is a Bun workspace monorepo composed of the following apps and pack
 - **`apps/web`**: The frontend UI built with React, Vite, Tailwind CSS v4, TanStack Router, and TanStack Query.
 
 ### Packages
+- **`packages/api-client`**: A universal HTTP and WebSocket client (`@repo/api-client`) that abstracts API requests and connection logic, providing a standardized, type-safe integration layer for the frontend and backend.
 - **`packages/redis`**: A shared module encapsulating Redis logic for consistent state synchronization (atomic JSON reads/writes, TTL logic) between the API and WebSocket server.
 - **`packages/types`**: Centralized TypeScript definitions (`@repo/types`) used uniformly across the monorepo for maximum type-safety.
 
