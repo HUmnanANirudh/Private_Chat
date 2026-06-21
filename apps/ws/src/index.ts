@@ -15,12 +15,14 @@ const server = Bun.serve<wsData>({
     if (!token) {
       return new Response("Unauthorized", { status: 401 });
     }
+
     const upgrade = server.upgrade(req, {
       data: {
         roomId: "",
         token: token,
       },
     });
+
     if (!upgrade) {
       return new Response("Upgrade failed", { status: 400 });
     }

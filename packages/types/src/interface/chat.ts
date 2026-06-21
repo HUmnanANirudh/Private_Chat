@@ -110,6 +110,7 @@ export interface ChatHeaderProps {
   timeRemaining: number | null;
   formatTime: (ms: number) => string;
   handleCopy: () => void;
+  isCopied: boolean;
   destroyRoom: () => void;
 }
 

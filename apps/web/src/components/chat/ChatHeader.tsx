@@ -1,4 +1,4 @@
-import { Share2, Trash2, Clock } from "lucide-react";
+import { Trash2, Clock, Copy, Check } from "lucide-react";
 import type { ChatHeaderProps } from "@repo/types";
 
 export default function ChatHeader({
@@ -7,6 +7,7 @@ export default function ChatHeader({
   timeRemaining,
   formatTime,
   handleCopy,
+  isCopied,
   destroyRoom,
 }: ChatHeaderProps) {
   return (
@@ -50,11 +51,11 @@ export default function ChatHeader({
       <div className="flex-1 flex items-center justify-end gap-2 sm:gap-4 z-10">
         <button
           onClick={handleCopy}
-          title="Share room link"
+          title="Copy room link"
           className="flex items-center gap-2 px-3 py-2 sm:px-4 sm:py-2 rounded-lg bg-zinc-100 hover:bg-zinc-200 text-zinc-900 transition-colors shadow-sm font-semibold text-xs sm:text-sm"
         >
-          <Share2 size={16} />
-          <span className="hidden sm:block">Share Link</span>
+          {isCopied ? <Check size={16} className="text-green-600" /> : <Copy size={16} />}
+          <span className="hidden sm:block">{isCopied ? "Copied!" : "Copy Link"}</span>
         </button>
         <button
           onClick={destroyRoom}

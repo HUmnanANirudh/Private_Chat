@@ -5,9 +5,9 @@ export function connect(
   roomId: string,
   token: string
 ) {
-  console.log(`[Signaling] Connecting to ws://localhost:9001?roomId=${roomId}`);
+  console.log(`[Signaling] Connecting to ws://localhost:9001`);
 
-  const socket = new WebSocket(`ws://localhost:9001?roomId=${roomId}&token=${token}`);
+  const socket = new WebSocket(`ws://localhost:9001`);
 
   socket.onopen = () => {
     console.log("[Signaling] WebSocket connected");

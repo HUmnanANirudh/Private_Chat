@@ -11,6 +11,11 @@ export interface LobbyProps {
 
 export type JoiningMode = "idle" | "create" | "join";
 
+export type SearchParams = {
+  mode?: JoiningMode;
+  room?: string;
+};
+
 export interface IdentityCardProps {
   onCreateRoom: (ttl: number) => void;
   onJoinRoom: (roomId: string) => void;

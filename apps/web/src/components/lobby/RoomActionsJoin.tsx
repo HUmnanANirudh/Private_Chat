@@ -8,8 +8,7 @@ export default function RoomActionsJoin({
 }: RoomActionsJoinProps) {
   const [roomCode, setRoomCode] = useState(initialRoomCode);
 
-  const validRoomCode =
-    roomCode.trim().length === 8 && /^[a-zA-Z0-9]+$/.test(roomCode);
+  const validRoomCode = roomCode.trim().length >= 8;
 
   return (
     <div className="flex flex-col w-full justify-center">
@@ -21,7 +20,7 @@ export default function RoomActionsJoin({
     ${roomCode === "" || validRoomCode ? "border-zinc-700" : "border-red-500"}`}
       />
       {roomCode && !validRoomCode && (
-        <p className="text-xs text-red-400 mb-4">Room code invalid (8 characters)</p>
+        <p className="text-xs text-red-400 mb-4">Room code invalid (minimum 8 characters)</p>
       )}
       <div className="flex justify-center items-center w-full gap-4">
         <button

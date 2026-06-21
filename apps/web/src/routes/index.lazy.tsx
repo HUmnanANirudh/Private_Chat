@@ -1,4 +1,4 @@
-import { createLazyFileRoute, useNavigate } from '@tanstack/react-router'
+import { createLazyFileRoute, useNavigate, useRouterState } from '@tanstack/react-router'
 import Lobby from '../components/Lobby'
 
 export const Route = createLazyFileRoute('/')({
@@ -7,6 +7,9 @@ export const Route = createLazyFileRoute('/')({
 
 function Home() {
   const navigate = useNavigate()
+  const locationState: any = useRouterState({ select: (s) => s.location.state })
+  const mode = locationState?.mode
+  const room = locationState?.room
 
   const handleCreateRoom = async (ttl: number) => {
     console.log('Creating room with TTL:', ttl)
@@ -41,9 +44,10 @@ function Home() {
 
   return (
     <Lobby
+      roomId={room}
       onCreateRoom={handleCreateRoom}
       onJoinRoom={handleJoinRoom}
-      JoiningMode="idle"
+      JoiningMode={mode || 'idle'}
     />
   )
 }

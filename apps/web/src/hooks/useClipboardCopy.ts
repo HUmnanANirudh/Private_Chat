@@ -1,23 +1,27 @@
+import { useState, useCallback } from "react";
+
 export function useClipboardCopy() {
-  const handleCopy = async () => {
+  const [isCopied, setIsCopied] = useState(false);
+
+  const handleCopy = useCallback(async (text: string) => {
     try {
       if (navigator.clipboard) {
-        await navigator.clipboard.writeText(window.location.href);
+        await navigator.clipboard.writeText(text);
       } else {
         const textArea = document.createElement("textarea");
-        textArea.value = window.location.href;
+        textArea.value = text;
         document.body.appendChild(textArea);
         textArea.focus();
         textArea.select();
         document.execCommand('copy');
         document.body.removeChild(textArea);
       }
-      alert("Link copied to clipboard!");
+      setIsCopied(true);
+      setTimeout(() => setIsCopied(false), 3000);
     } catch (e) {
       console.error("Copy failed", e);
-      alert("Could not copy link. Your browser may require HTTPS for this feature.");
     }
-  };
+  }, []);
 
-  return { handleCopy };
+  return { handleCopy, isCopied };
 }

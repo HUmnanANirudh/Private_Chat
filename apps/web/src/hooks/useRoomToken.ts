@@ -1,12 +1,7 @@
-export function useRoomToken(roomId: string) {
-  const ensureToken = async (): Promise<string | null> => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const urlToken = urlParams.get("token");
-    if (urlToken) {
-      sessionStorage.setItem("token", urlToken);
-      return urlToken;
-    }
+import { useCallback } from "react";
 
+export function useRoomToken(roomId: string) {
+  const ensureToken = useCallback(async (): Promise<string | null> => {
     try {
       const res = await fetch(`/api/v1/room/join`, {
         method: "POST",
@@ -17,7 +12,6 @@ export function useRoomToken(roomId: string) {
       if (res.ok) {
         const data = await res.json();
         if (data.token) {
-          sessionStorage.setItem("token", data.token);
           return data.token;
         }
       } else if (res.status === 403) {
@@ -28,7 +22,7 @@ export function useRoomToken(roomId: string) {
       throw e;
     }
     return null;
-  };
+  }, [roomId]);
 
   return { ensureToken };
 }

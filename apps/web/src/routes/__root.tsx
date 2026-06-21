@@ -1,4 +1,4 @@
-import { HeadContent, Scripts, createRootRoute } from '@tanstack/react-router'
+import { HeadContent, Scripts, createRootRoute, Navigate } from '@tanstack/react-router'
 import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools'
 import { TanStackDevtools } from '@tanstack/react-devtools'
 
@@ -25,6 +25,9 @@ export const Route = createRootRoute({
       },
     ],
   }),
+  notFoundComponent: () => {
+    return <Navigate to="/error" />
+  },
   shellComponent: RootDocument,
 })
 
