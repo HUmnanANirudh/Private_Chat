@@ -12,12 +12,12 @@ export function useDestroyRoom({
   });
 
   const destroyRoom = async () => {
-    chatManagerRef.current?.leaveRoom();
     try {
       await destroyMutation.mutateAsync();
     } catch (err) {
       console.error("[Chat] Failed to destroy room via API:", err);
     }
+    chatManagerRef.current?.leaveRoom();
     handleRoomDestroyed();
   };
 

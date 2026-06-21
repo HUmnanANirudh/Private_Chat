@@ -1,37 +1,8 @@
 import axios from 'axios';
 import type { SignalingMessage } from '@repo/types';
 
-const isBrowser = typeof window !== 'undefined';
-
-const getEnv = (key: string): string | undefined => {
-  const g = (typeof globalThis !== 'undefined' ? globalThis : {}) as any;
-  if (g.process?.env?.[key]) {
-    return g.process.env[key];
-  }
-  // @ts-ignore
-  if (typeof import.meta !== 'undefined' && import.meta.env?.[key]) {
-    // @ts-ignore
-    return import.meta.env[key];
-  }
-  return undefined;
-};
-
-const resolveUrl = (envValue: string | undefined, defaultPort: string, protocolDefault: string): string => {
-  if (envValue) return envValue;
-  if (isBrowser) {
-    const hostname = window.location.hostname;
-    const protocol = window.location.protocol;
-    if (protocolDefault === 'ws') {
-      const wsProtocol = protocol === 'https:' ? 'wss:' : 'ws:';
-      return `${wsProtocol}//${hostname}:${defaultPort}`;
-    }
-    return `${protocol}//${hostname}:${defaultPort}`;
-  }
-  return `${protocolDefault}://localhost:${defaultPort}`;
-};
-
-export const API_BASE = resolveUrl(getEnv('API_URL'), '9000', 'http');
-export const WS_BASE = resolveUrl(getEnv('APi_URL'), '9001', 'ws');
+export const API_BASE = process.env.API_URL || 'http://localhost:9000';
+export const WS_BASE = process.env.WS_URL || 'ws://localhost:9001';
 
 export const apiClient = axios.create({
   baseURL: API_BASE,
@@ -51,15 +22,15 @@ export const api = {
     return response.data;
   },
   getRoom: async (roomId: string) => {
-    const response = await apiClient.get(`/api/v1/room?roomId=${roomId}`);
+    const response = await apiClient.get(`/api/v1/room?roomId=${encodeURIComponent(roomId)}`);
     return response.data;
   },
   destroyRoom: async (roomId: string) => {
     const response = await apiClient.delete('/api/v1/room', { data: { roomId } });
     return response.data;
   },
-  getWebSocketUrl: (roomId: string, token: string) => {
-    return `${WS_BASE}?roomId=${roomId}&token=${token}`;
+  getWebSocketUrl: (roomId?: string, token?: string) => {
+    return WS_BASE;
   },
 };
 
