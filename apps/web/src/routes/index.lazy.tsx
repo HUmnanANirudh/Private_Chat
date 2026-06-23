@@ -30,8 +30,15 @@ function Home() {
       console.log('Joined room:', data)
       navigate({ to: '/room/$roomId', params: { roomId } })
     },
-    onError: (err) => {
+    onError: (err: any) => {
       console.error('Failed to join room:', err)
+      if (err?.response?.status === 404) {
+        navigate({ to: '/error/room-not-found' })
+      } else if (err?.response?.status === 403) {
+        navigate({ to: '/error/room-full' })
+      } else {
+        navigate({ to: '/error' })
+      }
     },
   })
 

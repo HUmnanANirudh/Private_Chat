@@ -15,7 +15,7 @@ export default function ChatHeader({
   const [isAlertOpen, setIsAlertOpen] = useState(false);
 
   return (
-    <div className="p-4 sm:p-5 border-b border-zinc-800/50 flex items-center justify-between bg-zinc-900/30 shrink-0 relative">
+    <div className="px-4 pb-4 pt-[calc(1rem+env(safe-area-inset-top))] sm:p-5 border-b border-zinc-800/50 flex items-center justify-between bg-zinc-900/30 shrink-0 relative">
       <div className="flex-1 flex items-center justify-start">
         <div className="flex items-center gap-2 bg-zinc-900/50 backdrop-blur-sm border border-zinc-800/50 rounded-lg px-3 py-1.5">
           <div

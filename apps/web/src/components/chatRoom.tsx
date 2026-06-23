@@ -80,7 +80,7 @@ export default function Chat({ roomId }: ChatRoomProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   return (
-    <div className="flex flex-col h-screen w-full bg-zinc-950 text-zinc-100 overflow-hidden relative max-w-4xl mx-auto border-x border-zinc-800/50 shadow-2xl">
+    <div className="flex flex-col h-[100dvh] w-full bg-zinc-950 text-zinc-100 overflow-hidden relative max-w-4xl mx-auto border-x border-zinc-800/50 shadow-2xl pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]">
       <ChatHeader
         dataChannelReady={dataChannelReady}
         expiresAt={expiresAt}
