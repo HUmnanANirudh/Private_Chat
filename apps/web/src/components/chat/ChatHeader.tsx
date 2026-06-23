@@ -59,7 +59,7 @@ export default function ChatHeader({
             if (typeof navigator !== "undefined" && navigator.share) {
               navigator.share({
                 title: "Private Chat",
-                text: `Join my Private Chat room! 🔒\nRoom Code: ${roomCode}`,
+                text: `You've been invited to a Private Chat room.\nRoom Code: ${roomCode}\nTap the link below to join securely.`,
                 url: inviteUrl,
               }).catch(console.error);
             } else {
