@@ -10,7 +10,7 @@ export default function ChatInput({
   handleSendMessage,
 }: ChatInputProps) {
   return (
-    <div className="shrink-0 p-4 sm:p-5 bg-zinc-950 border-t border-zinc-800/50">
+    <div className="shrink-0 pt-4 px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] sm:p-5 bg-zinc-950 border-t border-zinc-800/50">
       <div className="flex items-end bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden focus-within:border-zinc-600 focus-within:ring-1 focus-within:ring-zinc-600 transition-all shadow-sm">
         <input
           type="file"

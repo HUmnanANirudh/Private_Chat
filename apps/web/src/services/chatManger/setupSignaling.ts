@@ -5,10 +5,9 @@ export function setupSignaling(context: ChatManagerContext): SignalingService {
   return createSignalingService({
     onReady: async (isInitiator: boolean) => {
       console.log("[ChatManager] onReady - Both peers joined, starting WebRTC...", isInitiator ? "as initiator" : "as receiver");
-      if (context.state === "disconnected" || context.state === "waiting") {
-        context.webrtc.resetConnection();
-        await context.webrtc.initialize();
-      }
+      context.webrtc.resetConnection();
+      context.setState("waiting");
+      await context.webrtc.initialize();
       if (isInitiator) {
         context.startConnection();
       }
