@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Trash2, Clock, Copy, Check } from "lucide-react";
+import { Trash2, Clock, Copy, Check, Share } from "lucide-react";
 import type { ChatHeaderProps } from "@repo/types";
 import { AlertDialog } from "../ui/alert-dialog";
 
@@ -11,6 +11,8 @@ export default function ChatHeader({
   handleCopy,
   isCopied,
   destroyRoom,
+  inviteUrl,
+  roomCode,
 }: ChatHeaderProps) {
   const [isAlertOpen, setIsAlertOpen] = useState(false);
 
@@ -53,17 +55,33 @@ export default function ChatHeader({
       )}
       <div className="flex-1 flex items-center justify-end gap-2 sm:gap-4 z-10">
         <button
+          onClick={() => {
+            if (typeof navigator !== "undefined" && navigator.share) {
+              navigator.share({
+                title: "Private Chat",
+                text: `You've been invited to a Private Chat room.\n\nRoom Code: ${roomCode}\n\nTap the link below to join securely.`,
+                url: inviteUrl,
+              }).catch(console.error);
+            }
+          }}
+          title="Share room link"
+          className="flex items-center gap-2 px-3 py-2 sm:px-4 sm:py-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-100 transition-colors shadow-sm font-semibold text-xs sm:text-sm"
+        >
+          <Share size={16} />
+          <span className="hidden sm:block">Share</span>
+        </button>
+        <button
           onClick={handleCopy}
           title="Copy room link"
           className="flex items-center gap-2 px-3 py-2 sm:px-4 sm:py-2 rounded-lg bg-zinc-100 hover:bg-zinc-200 text-zinc-900 transition-colors shadow-sm font-semibold text-xs sm:text-sm"
         >
           {isCopied ? <Check size={16} className="text-green-600" /> : <Copy size={16} />}
-          <span className="hidden sm:block">{isCopied ? "Copied!" : "Copy Link"}</span>
+          <span className="hidden sm:block">{isCopied ? "Copied!" : "Copy"}</span>
         </button>
         <button
           onClick={() => setIsAlertOpen(true)}
           title="Destroy room"
-          className="p-2 sm:p-2.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-500 transition-colors"
+          className="p-2 sm:p-2.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-500 transition-colors ml-1"
         >
           <Trash2 size={18} />
         </button>

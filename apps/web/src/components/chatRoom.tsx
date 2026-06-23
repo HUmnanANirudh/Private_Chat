@@ -89,6 +89,8 @@ export default function Chat({ roomId }: ChatRoomProps) {
         handleCopy={() => handleCopy(inviteUrl)}
         isCopied={isCopied}
         destroyRoom={destroyRoom}
+        inviteUrl={inviteUrl}
+        roomCode={roomId}
       />
 
       <MessageList

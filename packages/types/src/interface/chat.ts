@@ -112,6 +112,8 @@ export interface ChatHeaderProps {
   handleCopy: () => void;
   isCopied: boolean;
   destroyRoom: () => void;
+  inviteUrl: string;
+  roomCode: string;
 }
 
 export interface MessageListProps {
@@ -167,4 +169,10 @@ export interface AlertDialogProps {
   onConfirm: () => void;
   confirmText?: string;
   cancelText?: string;
+}
+
+
+export interface AttachmentMenuProps {
+  disabled: boolean;
+  onFileChange: (e: any) => void;
 }
