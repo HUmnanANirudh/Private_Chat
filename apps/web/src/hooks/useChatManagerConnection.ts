@@ -15,6 +15,7 @@ export function useChatManagerConnection({
   const [chatState, setChatState] = useState<ChatManagerState>("idle");
   const [dataChannelReady, setDataChannelReady] = useState(false);
   const chatManagerRef = useRef<ReturnType<typeof createChatManager> | null>(null);
+  const tokenRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (isVerifying) return;
@@ -32,6 +33,7 @@ export function useChatManagerConnection({
           }
         }
         if (!token) token = crypto.randomUUID().slice(0, 16);
+        tokenRef.current = token;
 
         if (!isMounted) return;
 
@@ -101,8 +103,26 @@ export function useChatManagerConnection({
 
     connect();
 
+    const handleVisibilityChange = () => {
+      if (
+        document.visibilityState === "visible" &&
+        chatManagerRef.current &&
+        !chatManagerRef.current.signaling?.isConnected
+      ) {
+        console.log("[Chat] App became visible, signaling is disconnected. Reconnecting...");
+        if (tokenRef.current) {
+          chatManagerRef.current.joinRoom(roomId, tokenRef.current).catch(err => {
+            console.error("[Chat] Failed to reconnect on visibility change:", err);
+          });
+        }
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
     return () => {
       isMounted = false;
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
       if (chatManagerRef.current) {
         chatManagerRef.current.leaveRoom();
       }
