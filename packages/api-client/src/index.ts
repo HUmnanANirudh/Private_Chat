@@ -40,7 +40,11 @@ export const api = {
     return response.data;
   },
   getWebSocketUrl: (roomId?: string, token?: string) => {
-    return WS_BASE;
+    let url = WS_BASE;
+    if (token) {
+      url += `?token=${encodeURIComponent(token)}`;
+    }
+    return url;
   },
 };
 

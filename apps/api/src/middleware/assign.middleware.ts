@@ -7,8 +7,8 @@ export const assign = (req: Request, res: Response, next: NextFunction) => {
     token = crypto.randomBytes(32).toString("hex");
     res.cookie("x-auth-value", token, {
       httpOnly: true,   
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
+      secure: true,
+      sameSite: "none",
       path: "/",
       maxAge: 1000 * 60 * 60 * 24 * 30,
     });

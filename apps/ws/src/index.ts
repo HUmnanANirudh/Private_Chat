@@ -11,7 +11,10 @@ const server = Bun.serve<wsData>({
   port: 9001,
   fetch(req, server) {
     const cookieHeader = req.headers.get("cookie");
-    let token = cookieHeader?.split('=')[1];
+    const url = new URL(req.url);
+    const tokenParam = url.searchParams.get("token");
+    let token = tokenParam || cookieHeader?.split('=')[1];
+    
     if (!token) {
       return new Response("Unauthorized", { status: 401 });
     }
