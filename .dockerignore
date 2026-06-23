@@ -1,0 +1,8 @@
+node_modules
+apps/web
+.git
+.env
+dist
+.vscode
+.idea
+*.log

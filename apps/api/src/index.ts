@@ -9,7 +9,6 @@ const app = express();
 
 app.use(cors({
     origin: (origin, callback) => {
-        // Allow all origins with credentials support by reflecting the request origin
         callback(null, true);
     },
     credentials: true

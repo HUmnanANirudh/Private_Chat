@@ -1,8 +1,8 @@
 import axios from 'axios';
 import type { SignalingMessage } from '@repo/types';
 
-export const API_BASE = process.env.API_URL || 'http://localhost:9000';
-export const WS_BASE = process.env.WS_URL || 'ws://localhost:9001';
+export let API_BASE = 'http://localhost:9000';
+export let WS_BASE = 'ws://localhost:9001';
 
 export const apiClient = axios.create({
   baseURL: API_BASE,
@@ -11,6 +11,16 @@ export const apiClient = axios.create({
     'Content-Type': 'application/json',
   },
 });
+
+export const configureApiClient = (config: { apiUrl?: string; wsUrl?: string }) => {
+  if (config.apiUrl) {
+    API_BASE = config.apiUrl;
+    apiClient.defaults.baseURL = API_BASE;
+  }
+  if (config.wsUrl) {
+    WS_BASE = config.wsUrl;
+  }
+};
 
 export const api = {
   createRoom: async (ttlMinutes: number) => {
