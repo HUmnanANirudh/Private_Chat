@@ -86,7 +86,7 @@ export default function Chat({ roomId }: ChatRoomProps) {
         expiresAt={expiresAt}
         timeRemaining={timeRemaining}
         formatTime={formatTime}
-        handleCopy={() => handleCopy(inviteUrl)}
+        handleCopy={() => handleCopy(`You've been invited to a Private Chat room.\n\nRoom Code: ${roomId}\n\nTap the link below to join securely.\n${inviteUrl}`)}
         isCopied={isCopied}
         destroyRoom={destroyRoom}
         inviteUrl={inviteUrl}
