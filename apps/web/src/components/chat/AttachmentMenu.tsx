@@ -1,10 +1,9 @@
 import { useState, useRef, useEffect } from "react";
-import { Paperclip, Image as ImageIcon, Video, FileText, Music, X, Camera } from "lucide-react";
+import { Paperclip, Image, Video, FileText, Music, X } from "lucide-react";
 import type { AttachmentMenuProps } from "@repo/types";
 export default function AttachmentMenu({ disabled, onFileChange }: AttachmentMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
-  const cameraRef = useRef<HTMLInputElement>(null);
   const imageRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLInputElement>(null);
   const audioRef = useRef<HTMLInputElement>(null);
@@ -27,7 +26,6 @@ export default function AttachmentMenu({ disabled, onFileChange }: AttachmentMen
 
   return (
     <div className="relative" ref={menuRef}>
-      <input type="file" accept="image/*" capture="environment" className="hidden" ref={cameraRef} onChange={onFileChange} />
       <input type="file" accept="image/*" className="hidden" ref={imageRef} onChange={onFileChange} />
       <input type="file" accept="video/*" className="hidden" ref={videoRef} onChange={onFileChange} />
       <input type="file" accept="audio/*" className="hidden" ref={audioRef} onChange={onFileChange} />
@@ -37,20 +35,11 @@ export default function AttachmentMenu({ disabled, onFileChange }: AttachmentMen
         <div className="absolute bottom-[calc(100%+0.5rem)] left-0 z-50 mb-2 w-48 bg-zinc-900 border border-zinc-800 rounded-xl shadow-2xl overflow-hidden animate-in fade-in slide-in-from-bottom-2 duration-200">
           <div className="flex flex-col p-1.5">
             <button
-              onClick={() => handleClick(cameraRef)}
-              className="flex items-center gap-3 px-3 py-2.5 text-sm font-medium text-zinc-300 hover:text-zinc-100 hover:bg-zinc-800 rounded-lg transition-colors"
-            >
-              <div className="p-1.5 bg-rose-500/10 text-rose-400 rounded-md">
-                <Camera size={16} />
-              </div>
-              Camera
-            </button>
-            <button
               onClick={() => handleClick(imageRef)}
               className="flex items-center gap-3 px-3 py-2.5 text-sm font-medium text-zinc-300 hover:text-zinc-100 hover:bg-zinc-800 rounded-lg transition-colors"
             >
               <div className="p-1.5 bg-blue-500/10 text-blue-400 rounded-md">
-                <ImageIcon size={16} />
+                <Image size={16} />
               </div>
               Image
             </button>
