@@ -21,7 +21,8 @@ export function createWebRTCService(): WebRTCService {
     onDataChannelMessage: null,
     onDataChannelStateChange: null,
     onNegotiationNeeded: null,
-    fileBuffers: new Map<string, string[]>(),
+    fileBuffers: new Map<string, { chunks: Uint8Array[], receivedSize: number }>(),
+    fileMetadata: new Map<string, any>(),
   };
 
   return {

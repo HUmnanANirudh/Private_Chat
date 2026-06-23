@@ -19,7 +19,8 @@ export interface WebRTCContext {
   onDataChannelMessage: ((message: DataChannelMessage) => void) | null;
   onDataChannelStateChange: ((state: string) => void) | null;
   onNegotiationNeeded: (() => void) | null;
-  fileBuffers: Map<string, string[]>;
+  fileBuffers: Map<string, { chunks: Uint8Array[], receivedSize: number }>;
+  fileMetadata: Map<string, any>;
 }
 
 export interface SignalingContext {
